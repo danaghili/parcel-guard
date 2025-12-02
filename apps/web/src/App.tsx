@@ -5,6 +5,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Login } from '@/pages/Login'
 import { Dashboard } from '@/pages/Dashboard'
 import { Live } from '@/pages/Live'
+import { Camera } from '@/pages/Camera'
 import { Events } from '@/pages/Events'
 import { Settings } from '@/pages/Settings'
 
@@ -25,6 +26,7 @@ function App(): JSX.Element {
         >
           <Route path="/" element={<Dashboard />} />
           <Route path="/live" element={<Live />} />
+          <Route path="/live/:cameraId" element={<Camera />} />
           <Route path="/events" element={<Events />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

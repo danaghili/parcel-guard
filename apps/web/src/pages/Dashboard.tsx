@@ -98,9 +98,10 @@ export function Dashboard(): JSX.Element {
         ) : (
           <div className="space-y-2">
             {cameras.map((camera) => (
-              <div
+              <Link
                 key={camera.id}
-                className="bg-slate-800 rounded-lg p-4 flex items-center justify-between"
+                to={`/live/${camera.id}`}
+                className="bg-slate-800 rounded-lg p-4 flex items-center justify-between hover:bg-slate-700 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div
@@ -110,14 +111,29 @@ export function Dashboard(): JSX.Element {
                   />
                   <span className="font-medium">{camera.name}</span>
                 </div>
-                <span
-                  className={`text-sm ${
-                    camera.status === 'online' ? 'text-green-400' : 'text-red-400'
-                  }`}
-                >
-                  {camera.status}
-                </span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm ${
+                      camera.status === 'online' ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {camera.status}
+                  </span>
+                  <svg
+                    className="w-4 h-4 text-slate-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </div>
+              </Link>
             ))}
           </div>
         )}

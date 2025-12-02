@@ -157,12 +157,20 @@ export const settingsApi = {
 }
 
 // Types (simplified versions - full types in @parcelguard/shared)
-interface Camera {
+export interface Camera {
   id: string
   name: string
   streamUrl: string
   status: 'online' | 'offline'
   lastSeen: number | null
+  settings?: {
+    motionSensitivity: number
+    motionZones: unknown[]
+    recordingSchedule: unknown | null
+    notificationsEnabled: boolean
+  }
+  createdAt?: number
+  updatedAt?: number
 }
 
 interface SystemStatus {

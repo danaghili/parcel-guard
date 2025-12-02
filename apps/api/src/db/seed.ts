@@ -50,13 +50,24 @@ async function seed(): Promise<void> {
       VALUES (?, ?, ?, ?, unixepoch(), unixepoch())
     `)
 
+    // Use HLS test streams for development (real RTSP streams won't work in browser)
     const cameras = [
-      { id: nanoid(), name: 'Front Door', streamUrl: 'rtsp://192.168.1.21:8554/stream' },
-      { id: nanoid(), name: 'Lobby', streamUrl: 'rtsp://192.168.1.22:8554/stream' },
+      {
+        id: nanoid(),
+        name: 'Front Door',
+        streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        status: 'online',
+      },
+      {
+        id: nanoid(),
+        name: 'Lobby',
+        streamUrl: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+        status: 'online',
+      },
     ]
 
     for (const camera of cameras) {
-      cameraStmt.run(camera.id, camera.name, camera.streamUrl, 'offline')
+      cameraStmt.run(camera.id, camera.name, camera.streamUrl, camera.status)
     }
     console.log(`  Inserted ${cameras.length} sample cameras`)
   } else {
