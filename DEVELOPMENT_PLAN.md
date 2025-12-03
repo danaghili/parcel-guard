@@ -19,7 +19,7 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 0 | Project Scaffolding | Monorepo setup, tooling, CI | None | ✅ Complete |
 | 1 | Core Infrastructure | Camera streaming, hub setup, PWA shell | Phase 0 | ✅ Complete |
 | 2 | Live View | Multi-camera grid, stream playback | Phase 1 | ✅ Complete |
-| 3A | Motion Detection (Pre-Hardware) | Event API, storage management, webhook | Phase 2 | ⬜ Not started |
+| 3A | Motion Detection (Pre-Hardware) | Event API, storage management, webhook | Phase 2 | ✅ Complete |
 | 3B | Motion Detection (Post-Hardware) | Frigate config, real camera testing | Phase 3A + Hardware | ⬜ Not started |
 | 4 | Event Timeline & Playback | Event list, video player | Phase 3A | ⬜ Not started |
 | 5 | Notifications | Push alerts on motion | Phase 4 | ⬜ Not started |
@@ -360,44 +360,44 @@ Integrate Frigate for motion detection, configure recording, and manage storage.
 - [ ] Test motion detection triggers
 
 #### 3.2 Frigate Event Webhook (Stage A - Pre-Hardware)
-- [ ] Create webhook endpoint `POST /api/frigate/events`
-- [ ] Parse Frigate event payload
-- [ ] Create motion_event record in database
-- [ ] Link to video clip and thumbnail paths
-- [ ] Handle event updates (end of motion)
+- [x] Create webhook endpoint `POST /api/frigate/events`
+- [x] Parse Frigate event payload
+- [x] Create motion_event record in database
+- [x] Link to video clip and thumbnail paths
+- [x] Handle event updates (end of motion)
 
 #### 3.3 Event Storage Management (Stage A - Pre-Hardware)
-- [ ] Create storage monitoring service
-- [ ] Implement automatic cleanup (retention days)
-- [ ] Respect "important" flag (don't delete)
-- [ ] Create `GET /api/system/storage` endpoint
-- [ ] Alert when storage exceeds threshold
+- [x] Create storage monitoring service
+- [x] Implement automatic cleanup (retention days)
+- [x] Respect "important" flag (don't delete)
+- [x] Create `GET /api/system/storage` endpoint
+- [x] Alert when storage exceeds threshold
 
 #### 3.4 Camera Settings API (Stage A - Pre-Hardware)
-- [ ] `PUT /api/cameras/:id` - update camera settings
-- [ ] Motion sensitivity setting
-- [ ] Notification enable/disable per camera
-- [ ] Sync settings to Frigate config (restart required)
+- [x] `PUT /api/cameras/:id` - update camera settings
+- [x] Motion sensitivity setting
+- [x] Notification enable/disable per camera
+- [ ] Sync settings to Frigate config (restart required) (Stage B)
 
 #### 3.5 Motion Zone Foundation (Stage A - Pre-Hardware)
-- [ ] Store motion zones in camera record
-- [ ] Define zone data structure (polygon coordinates)
-- [ ] API to update zones (UI in Phase 6)
+- [x] Store motion zones in camera record
+- [x] Define zone data structure (polygon coordinates)
+- [x] API to update zones (UI in Phase 6)
 
 #### 3.6 Event API (Stage A - Pre-Hardware)
-- [ ] `GET /api/events` - list events (paginated)
+- [x] `GET /api/events` - list events (paginated)
   - Filter by camera
   - Filter by date range
   - Filter by importance
-- [ ] `GET /api/events/:id` - get event details
-- [ ] `GET /api/events/:id/thumbnail` - serve thumbnail
-- [ ] `GET /api/events/:id/video` - serve video clip
+- [x] `GET /api/events/:id` - get event details
+- [x] `GET /api/events/:id/thumbnail` - serve thumbnail
+- [x] `GET /api/events/:id/video` - serve video clip
 
 #### 3.7 Event Simulation (Stage A - Pre-Hardware)
-- [ ] Create `scripts/simulate-events.ts` for development/testing
-- [ ] Generate realistic mock events with timestamps
-- [ ] Create sample thumbnail and video files
-- [ ] Seed database with simulated event history
+- [x] Create `scripts/simulate-events.ts` for development/testing
+- [x] Generate realistic mock events with timestamps
+- [x] Create sample thumbnail and video files
+- [x] Seed database with simulated event history
 
 ### Deliverables
 
@@ -416,11 +416,11 @@ Integrate Frigate for motion detection, configure recording, and manage storage.
 ### Acceptance Criteria
 
 **Stage A (Pre-Hardware):**
-- [ ] Simulated event creates database record
-- [ ] Event API returns filtered, paginated results
-- [ ] Thumbnail and video endpoints serve files
-- [ ] Storage cleanup removes old events (respects important flag)
-- [ ] Camera settings can be updated via API
+- [x] Simulated event creates database record
+- [x] Event API returns filtered, paginated results
+- [x] Thumbnail and video endpoints serve files
+- [x] Storage cleanup removes old events (respects important flag)
+- [x] Camera settings can be updated via API
 
 **Stage B (Post-Hardware):**
 - [ ] Motion in camera view triggers recording
@@ -430,17 +430,17 @@ Integrate Frigate for motion detection, configure recording, and manage storage.
 
 ### Tests Required
 **Unit:**
-- [ ] Frigate webhook parsing
-- [ ] Storage calculation
-- [ ] Retention cleanup logic
-- [ ] Event filtering logic
-- [ ] Pagination logic
+- [x] Frigate webhook parsing
+- [x] Storage calculation
+- [x] Retention cleanup logic
+- [x] Event filtering logic
+- [x] Pagination logic
 
 **E2E:**
-- [ ] Create event via webhook
-- [ ] List events with filters
-- [ ] View event details
-- [ ] Serve thumbnail and video
+- [x] Create event via webhook
+- [x] List events with filters
+- [x] View event details
+- [x] Serve thumbnail and video
 - [ ] Trigger motion (manual test - Stage B)
 
 ---
@@ -809,9 +809,9 @@ Performance improvements, UX refinements, and full PWA capabilities.
                                                        │
 Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4
 (Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)
-     ✅              ✅              ✅         Event API         │
-                                               Storage Mgmt      │
-                                               Webhook           ▼
+     ✅              ✅              ✅            ✅              │
+                                               Event API         │
+                                               Storage Mgmt      ▼
                                                            Phase 5 ───► Phase 6 ───► Phase 7
                                                            (Notify)     (Settings)   (Polish)
 ```
@@ -823,7 +823,7 @@ The system is designed so that **Phases 0-4 and most of Phase 5** can be develop
 | Phase | Hardware Required? | Notes |
 |-------|-------------------|-------|
 | 0-2 | No | ✅ Complete - Used mock data and HLS test streams |
-| 3A | No | Event simulation script provides test data |
+| 3A | No | ✅ Complete - Event simulation script provides test data |
 | 3B | **Yes** | Frigate configuration requires real cameras |
 | 4 | No | Uses events from 3A (simulated or real) |
 | 5 | No | Push notifications work with simulated events |

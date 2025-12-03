@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-12-03
+
+### Added
+- Motion Detection Backend (Phase 3A - Pre-Hardware)
+  - Frigate webhook endpoint `POST /api/frigate/events` for receiving motion events
+  - Frigate event payload parser in shared package
+  - Events service with full CRUD operations
+  - Event API endpoints:
+    - `GET /api/events` - list with filtering and pagination
+    - `GET /api/events/:id` - single event details
+    - `GET /api/events/stats` - event statistics
+    - `PUT /api/events/:id` - update event (mark important/false alarm)
+    - `DELETE /api/events/:id` - delete single event
+    - `POST /api/events/bulk-delete` - bulk delete
+    - `GET /api/events/:id/thumbnail` - serve thumbnail image
+    - `GET /api/events/:id/video` - serve video clip
+    - `GET /api/events/:id/download` - download video clip
+  - Storage management service with disk usage tracking
+  - Storage API endpoint `GET /api/system/storage`
+  - Retention cleanup service (`deleteExpiredEvents`)
+  - Camera settings API:
+    - `POST /api/cameras` - create camera
+    - `PUT /api/cameras/:id` - update camera settings
+    - `DELETE /api/cameras/:id` - delete camera
+  - Motion zone data structure (stored as JSON in camera record)
+  - Event simulation script for development/testing
+  - Comprehensive unit tests for events API
+  - E2E tests for Phase 3A functionality
+
+### Fixed
+- PIN input selector in E2E tests (type="text" with inputmode="numeric")
+- Web app unit test for login screen display
+
 ## [0.3.0] - 2024-12-03
 
 ### Added

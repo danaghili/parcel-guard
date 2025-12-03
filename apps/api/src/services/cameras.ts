@@ -93,3 +93,106 @@ export function getCameraCount(): { total: number; online: number; offline: numb
     offline: total - online,
   }
 }
+
+export interface UpdateCameraInput {
+  name?: string
+  streamUrl?: string
+  motionSensitivity?: number
+  motionZones?: unknown[]
+  notificationsEnabled?: boolean
+}
+
+export function updateCamera(id: string, input: UpdateCameraInput): Camera {
+  const db = getDb()
+
+  // Check camera exists
+  const existing = getCameraById(id)
+  if (!existing) {
+    throw Errors.notFound('Camera')
+  }
+
+  const updates: string[] = []
+  const values: unknown[] = []
+
+  if (input.name !== undefined) {
+    updates.push('name = ?')
+    values.push(input.name)
+  }
+  if (input.streamUrl !== undefined) {
+    updates.push('streamUrl = ?')
+    values.push(input.streamUrl)
+  }
+  if (input.motionSensitivity !== undefined) {
+    // Validate range 0-100
+    const sensitivity = Math.max(0, Math.min(100, input.motionSensitivity))
+    updates.push('motionSensitivity = ?')
+    values.push(sensitivity)
+  }
+  if (input.motionZones !== undefined) {
+    updates.push('motionZones = ?')
+    values.push(JSON.stringify(input.motionZones))
+  }
+  if (input.notificationsEnabled !== undefined) {
+    updates.push('notificationsEnabled = ?')
+    values.push(input.notificationsEnabled ? 1 : 0)
+  }
+
+  if (updates.length > 0) {
+    updates.push('updatedAt = unixepoch()')
+    values.push(id)
+    db.prepare(`UPDATE cameras SET ${updates.join(', ')} WHERE id = ?`).run(...values)
+  }
+
+  const camera = getCameraById(id)
+  if (!camera) {
+    throw Errors.internal('Camera not found after update')
+  }
+
+  return camera
+}
+
+export interface CreateCameraInput {
+  id: string
+  name: string
+  streamUrl: string
+  motionSensitivity?: number
+  notificationsEnabled?: boolean
+}
+
+export function createCamera(input: CreateCameraInput): Camera {
+  const db = getDb()
+
+  // Check if camera with this ID already exists
+  const existing = getCameraById(input.id)
+  if (existing) {
+    throw Errors.badRequest(`Camera with ID ${input.id} already exists`)
+  }
+
+  db.prepare(`
+    INSERT INTO cameras (id, name, streamUrl, motionSensitivity, notificationsEnabled, status)
+    VALUES (?, ?, ?, ?, ?, 'offline')
+  `).run(
+    input.id,
+    input.name,
+    input.streamUrl,
+    input.motionSensitivity ?? 50,
+    input.notificationsEnabled !== false ? 1 : 0,
+  )
+
+  const camera = getCameraById(input.id)
+  if (!camera) {
+    throw Errors.internal('Camera not found after creation')
+  }
+
+  return camera
+}
+
+export function deleteCamera(id: string): void {
+  const db = getDb()
+
+  const result = db.prepare('DELETE FROM cameras WHERE id = ?').run(id)
+
+  if (result.changes === 0) {
+    throw Errors.notFound('Camera')
+  }
+}

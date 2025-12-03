@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth'
 import { settingsRoutes } from './routes/settings'
 import { camerasRoutes } from './routes/cameras'
 import { systemRoutes } from './routes/system'
+import { eventsRoutes } from './routes/events'
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
 const HOST = process.env.HOST ?? '0.0.0.0'
@@ -56,6 +57,7 @@ async function buildServer(
   await server.register(authRoutes, { prefix: '/api' })
   await server.register(settingsRoutes, { prefix: '/api' })
   await server.register(camerasRoutes, { prefix: '/api' })
+  await server.register(eventsRoutes, { prefix: '/api' })
 
   return server
 }

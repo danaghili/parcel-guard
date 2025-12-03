@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from '../src/App'
 
 describe('App', () => {
-  it('should render the dashboard', () => {
+  it('should render the login screen when not authenticated', () => {
     render(
       <BrowserRouter>
         <App />
@@ -12,6 +12,6 @@ describe('App', () => {
     )
 
     expect(screen.getByText('ParcelGuard')).toBeInTheDocument()
-    expect(screen.getByText('Multi-camera security system')).toBeInTheDocument()
+    expect(screen.getByText('Enter your PIN to continue')).toBeInTheDocument()
   })
 })

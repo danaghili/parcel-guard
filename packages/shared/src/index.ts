@@ -11,6 +11,15 @@ export type {
 // Event types
 export type { EventFilters, MotionEvent, PaginatedEvents } from './types/event'
 
+// Frigate types
+export type {
+  FrigateAttribute,
+  FrigateEventData,
+  FrigateEventPayload,
+  FrigateWebhookEvent,
+} from './types/frigate'
+export { parseFrigateEvent } from './types/frigate'
+
 // Settings types
 export type { AppSettings, NotificationSettings, SystemStatus } from './types/settings'
 

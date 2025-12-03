@@ -34,6 +34,15 @@ export function getSettings(): Settings {
   }
 }
 
+export function getSetting(key: string): string | null {
+  const db = getDb()
+  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined
+
+  return row?.value ?? null
+}
+
 export function updateSettings(updates: Partial<Settings>): Settings {
   const db = getDb()
 

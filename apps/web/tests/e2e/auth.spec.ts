@@ -19,7 +19,7 @@ test.describe('Authentication', () => {
     await page.goto('/login')
 
     // Enter invalid PIN
-    const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
 
     // Type invalid PIN digit by digit
     await pinInputs.first().click()
@@ -35,7 +35,7 @@ test.describe('Authentication', () => {
     await page.goto('/login')
 
     // Enter valid PIN (default: 1234)
-    const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
 
     await pinInputs.first().click()
     await page.keyboard.type('1234')
@@ -53,7 +53,7 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/login/)
 
     // Login
-    const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
     await page.keyboard.type('1234')
 
@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
   test('should maintain session across page refresh', async ({ page }) => {
     // Login first
     await page.goto('/login')
-    const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
     await page.keyboard.type('1234')
 
@@ -82,7 +82,7 @@ test.describe('Authentication', () => {
   test('should logout and redirect to login', async ({ page }) => {
     // Login first
     await page.goto('/login')
-    const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
     await page.keyboard.type('1234')
 
