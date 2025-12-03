@@ -23,7 +23,8 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 3B | Motion Detection (Post-Hardware) | Frigate config, real camera testing | Phase 3A + Hardware | ⬜ Not started |
 | 4 | Event Timeline & Playback | Event list, video player | Phase 3A | ✅ Complete |
 | 5 | Notifications | Push alerts on motion | Phase 4 | ✅ Complete |
-| 6 | Settings & Administration | Camera management, system config | Phase 5 | ⬜ Not started |
+| 6A | Settings & Administration (Pre-Hardware) | Camera management UI, system settings, health dashboard | Phase 5 | ✅ Complete |
+| 6B | Settings & Administration (Post-Hardware) | Motion zone editor, recording schedules, real system stats | Phase 6A + Hardware | ⬜ Not started |
 | 7 | Polish & Optimisation | Performance, UX, full PWA | Phase 6 | ⬜ Not started |
 
 ---
@@ -625,41 +626,141 @@ Send push notifications on motion detection with configurable settings.
 
 ## Phase 6: Settings & Administration
 
+### Implementation Approach
+
+> **Note:** Phase 6 is split into two stages:
+> - **Stage A (Pre-Hardware):** Build camera management UI, system settings, and health dashboard using available APIs
+> - **Stage B (Post-Hardware):** Add motion zone editor with live preview, recording schedules, real CPU temp, and service management
+>
+> This allows development to continue before hardware arrives. Stage A provides a complete admin interface that Stage B enhances.
+
+---
+
+## Phase 6A: Settings & Administration (Pre-Hardware) ✅
+
 ### Objective
-Complete camera management, motion zone editor, recording schedules, and system health dashboard.
+Build camera management UI, system settings, and health dashboard.
 
 ### Tasks
 
-#### 6.1 Camera Management
-- [ ] Create `/cameras` page - list all cameras
-- [ ] Create `/cameras/add` page - add camera wizard
+#### 6A.1 API Client Extensions
+- [x] `camerasApi.create(data)` - POST /api/cameras
+- [x] `camerasApi.delete(id)` - DELETE /api/cameras/:id
+- [x] `camerasApi.testStream(url)` - POST /api/cameras/test-stream
+- [x] `settingsApi.updatePin(currentPin, newPin)` - PUT /api/settings/pin
+- [x] `systemApi.storage()` - GET /api/system/storage
+- [x] `systemApi.cleanup()` - POST /api/system/storage/cleanup
+
+#### 6A.2 Backend: Test Stream Endpoint
+- [x] `POST /api/cameras/test-stream` - validates stream URL is reachable
+- [x] HTTP/HTTPS URL validation with HEAD request
+- [x] RTSP URL format validation
+
+#### 6A.3 Camera Management UI
+- [x] Create `/cameras` page - list all cameras with status indicators
+- [x] Create `AddCameraModal` component - add camera wizard
   - Enter stream URL
   - Test connection
   - Name camera
   - Save
-- [ ] Create `/cameras/:id/settings` page
+- [x] Create `/cameras/:id` page - individual camera settings
   - Edit name
-  - View connection details
   - Motion sensitivity slider
   - Notification toggle
   - Delete camera (with confirmation)
+- [x] Create `DeleteConfirmModal` - reusable delete confirmation
 
-#### 6.2 Camera API Extensions
-- [ ] `POST /api/cameras` - add new camera
-- [ ] `DELETE /api/cameras/:id` - remove camera
-- [ ] `POST /api/cameras/:id/test` - test stream connection
-- [ ] Update Frigate config on camera changes
+#### 6A.4 System Settings UI
+- [x] Create `PinChangeModal` component
+  - Current PIN validation
+  - New PIN entry (4-8 digits)
+  - Confirm new PIN
+  - Error handling
+- [x] Create `StorageSettings` component
+  - Storage usage display
+  - Retention days slider
+  - Cleanup button
+- [x] Create `ThemeToggle` component
+  - Light/Dark/System options
+  - Persist to settings API
 
-#### 6.3 Motion Zone Editor
+#### 6A.5 System Health Dashboard
+- [x] Create `/system` page
+- [x] Create `SystemStats` component
+  - Version info
+  - Uptime display
+  - Memory usage
+- [x] Create `StorageChart` component
+  - Total/used/available display
+  - Breakdown by clips/thumbnails/database
+  - Warning at 80% threshold
+- [x] Create `CameraHealthTable` component
+  - Camera list with status
+  - Online/offline indicators
+  - Last seen timestamps
+
+#### 6A.6 Navigation Updates
+- [x] Settings page links to /cameras
+- [x] Settings page links to /system
+- [x] Back navigation from sub-pages
+
+### Deliverables
+- Add/edit/remove cameras via UI
+- PIN change with validation
+- Storage management with cleanup
+- Theme toggle
+- System health monitoring
+
+### Acceptance Criteria
+- [x] Can add new camera via wizard
+- [x] Can edit camera name and settings
+- [x] Can delete camera (with confirmation)
+- [x] PIN change works correctly
+- [x] Storage settings update retention period
+- [x] Theme toggle persists preference
+- [x] System health shows memory, storage, uptime
+- [x] Camera health table shows all cameras
+
+### Tests Required
+**Unit:**
+- [x] PinChangeModal - validation, API calls
+- [x] ThemeToggle - selection, persistence
+- [x] StorageSettings - slider, cleanup
+- [x] SystemStats - data display
+- [x] CameraHealthTable - table rendering
+- [x] DeleteConfirmModal - confirm/cancel
+
+**E2E:**
+- [x] Navigate to cameras page
+- [x] Add camera button visibility
+- [x] Camera not found handling
+- [x] Settings page sections
+- [x] Theme toggle options
+- [x] Navigation to cameras/system
+- [x] System health display
+- [x] Storage information display
+- [x] Camera health table
+
+---
+
+## Phase 6B: Settings & Administration (Post-Hardware) ⬜
+
+### Objective
+Add hardware-dependent features: motion zone editor, recording schedules, real system stats.
+
+### Tasks
+
+#### 6B.1 Motion Zone Editor
 - [ ] Create `MotionZoneEditor` component
-- [ ] Display camera feed as background
-- [ ] Draw polygon overlay
+- [ ] Display live camera feed as background
+- [ ] Draw polygon overlay on video
 - [ ] Add/remove zone points
 - [ ] Clear/reset zones
 - [ ] Save zones to camera settings
 - [ ] Integrate into camera settings page
+- [ ] Sync zones to Frigate config
 
-#### 6.4 Recording Schedule
+#### 6B.2 Recording Schedule
 - [ ] Create `ScheduleEditor` component
 - [ ] Weekly grid (days × hours)
 - [ ] Toggle recording on/off per block
@@ -668,64 +769,41 @@ Complete camera management, motion zone editor, recording schedules, and system 
   - Delivery hours (7am-7pm weekdays)
   - Custom
 - [ ] Save schedule to camera settings
-- [ ] API integration for schedule
+- [ ] Sync schedule to Frigate config
 
-#### 6.5 System Settings Page
-- [ ] Storage retention period (days slider)
-- [ ] App PIN change
-- [ ] Theme toggle (light/dark)
-- [ ] About section (version, links)
+#### 6B.3 Real System Stats
+- [ ] CPU temperature from Pi hardware
+- [ ] Service status (Frigate, API, Nginx)
+- [ ] `POST /api/system/restart/:service` - restart service
 
-#### 6.6 System Health Dashboard
-- [ ] Create `/system` page
-- [ ] Hub stats:
-  - CPU temperature
-  - Storage usage (bar chart)
-  - Uptime
-  - Service status
-- [ ] Per-camera stats:
-  - Connection status
-  - Last seen
-  - Stream health
-- [ ] Network diagnostics (ping test)
-
-#### 6.7 System API Extensions
-- [ ] `GET /api/system/health` - detailed system health
-  - CPU temp
-  - Memory usage
-  - Disk usage
-  - Service statuses
-- [ ] `GET /api/system/cameras/health` - all camera health
-- [ ] `POST /api/system/restart/:service` - restart service (with auth)
+#### 6B.4 Frigate Config Sync
+- [ ] Update Frigate config on camera add/delete
+- [ ] Update Frigate config on motion zone change
+- [ ] Update Frigate config on schedule change
+- [ ] Trigger Frigate restart when config changes
 
 ### Deliverables
-- Add/edit/remove cameras via UI
-- Visual motion zone editor
+- Visual motion zone editor with live preview
 - Recording schedule configuration
-- System health monitoring
+- Real CPU temperature monitoring
+- Service restart capability
 
 ### Acceptance Criteria
-- [ ] Can add new camera via wizard
-- [ ] Can edit camera name and settings
-- [ ] Can delete camera (with confirmation)
-- [ ] Motion zone editor saves valid polygons
+- [ ] Motion zone editor shows live video background
+- [ ] Can draw and save polygon zones
 - [ ] Recording schedule applies correctly
-- [ ] System health shows accurate stats
-- [ ] PIN change works correctly
+- [ ] CPU temperature displays from Pi
+- [ ] Can restart services from UI
 
 ### Tests Required
 **Unit:**
 - Zone polygon validation
 - Schedule parsing
-- Health stat calculations
 
 **E2E:**
-- Add camera flow
-- Edit camera settings
 - Draw motion zone
 - Set recording schedule
-- Change PIN
-- View system health
+- View real CPU temp (manual test)
 
 ---
 
@@ -806,26 +884,25 @@ Performance improvements, UX refinements, and full PWA capabilities.
 ### Recommended Sequence
 
 ```
-                                              ┌─────────────────┐
-                                              │  Phase 3B       │
-                                              │  (Post-Hardware)│
-                                              │  Frigate Config │
-                                              └────────┬────────┘
-                                                       │
-                                                       │ Hardware arrives
-                                                       │
-Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4 ───► Phase 5 ───► Phase 6
-(Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)  (Notify)     (Settings)
-     ✅              ✅              ✅            ✅              ✅            ✅           │
-                                               Event API         Events List  ntfy.sh      │
-                                               Storage Mgmt      Video Player Quiet Hours  ▼
-                                                                              Cooldowns  Phase 7
-                                                                                         (Polish)
+                                              ┌─────────────────┐     ┌─────────────────┐
+                                              │  Phase 3B       │     │  Phase 6B       │
+                                              │  (Post-Hardware)│     │  (Post-Hardware)│
+                                              │  Frigate Config │     │  Motion Zones   │
+                                              └────────┬────────┘     └────────┬────────┘
+                                                       │                       │
+                                                       │ Hardware arrives      │
+                                                       │                       │
+Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4 ───► Phase 5 ───► Phase 6A ─┴──► Phase 7
+(Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)  (Notify)     (Pre-Hardware)   (Polish)
+     ✅              ✅              ✅            ✅              ✅            ✅              ✅
+                                               Event API         Events List  ntfy.sh      Camera Mgmt UI
+                                               Storage Mgmt      Video Player Quiet Hours  System Settings
+                                                                              Cooldowns    Health Dashboard
 ```
 
 ### Hardware-Independent Development Path
 
-The system is designed so that **Phases 0-4 and most of Phase 5** can be developed without physical camera hardware:
+The system is designed so that **Phases 0-6A** can be developed without physical camera hardware:
 
 | Phase | Hardware Required? | Notes |
 |-------|-------------------|-------|
@@ -834,7 +911,8 @@ The system is designed so that **Phases 0-4 and most of Phase 5** can be develop
 | 3B | **Yes** | Frigate configuration requires real cameras |
 | 4 | No | ✅ Complete - Uses events from 3A (simulated or real) |
 | 5 | No | ✅ Complete - ntfy.sh notifications with simulated events |
-| 6 | Partial | Motion zone editor needs live preview (3B) |
+| 6A | No | ✅ Complete - Camera management, settings, health dashboard |
+| 6B | **Yes** | Motion zone editor needs live preview, real CPU temp |
 | 7 | No | Polish and optimisation |
 
 ### Parallel Work Opportunities
@@ -873,4 +951,4 @@ The system is designed so that **Phases 0-4 and most of Phase 5** can be develop
 ---
 
 *Last Updated: December 2024*
-*Version: 1.3.0*
+*Version: 1.4.0*
