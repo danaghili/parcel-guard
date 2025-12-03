@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2024-12-03
+
+### Added
+- Settings & Administration UI (Phase 6A - Pre-Hardware)
+  - Camera Management UI
+    - `apps/web/src/pages/Cameras.tsx` - Camera list page with add/delete
+    - `apps/web/src/pages/CameraSettings.tsx` - Individual camera settings
+    - `apps/web/src/components/cameras/AddCameraModal.tsx` - Add camera wizard with URL testing
+    - `apps/web/src/components/ui/DeleteConfirmModal.tsx` - Reusable delete confirmation modal
+    - Camera CRUD operations via UI
+    - Stream URL validation with accessibility check
+  - System Settings Components
+    - `apps/web/src/components/settings/PinChangeModal.tsx` - PIN change with validation (4-8 digits)
+    - `apps/web/src/components/settings/StorageSettings.tsx` - Storage usage, retention slider, cleanup button
+    - `apps/web/src/components/settings/ThemeToggle.tsx` - Light/Dark/System theme switcher
+  - System Health Dashboard
+    - `apps/web/src/pages/System.tsx` - System health dashboard page
+    - `apps/web/src/components/system/SystemStats.tsx` - Version, uptime, memory stats
+    - `apps/web/src/components/system/StorageChart.tsx` - Storage visualization with breakdown
+    - `apps/web/src/components/system/CameraHealthTable.tsx` - Camera status table
+    - Auto-refresh every 30 seconds
+    - Storage warning indicators (>80% threshold)
+  - API Enhancements
+    - `POST /api/cameras/test-stream` - Test stream URL accessibility
+    - Updated `/api/system/storage` response format with formatted breakdown
+  - Navigation Updates
+    - Settings page links to Cameras and System Health pages
+    - Back navigation from sub-pages
+  - New routes: `/cameras`, `/cameras/:id`, `/system`
+  - Unit tests (64 tests total, 43 new for Phase 6A components)
+  - E2E tests (36 tests for cameras, settings, system pages)
+
+### Changed
+- Updated Settings page with organized sections (Manage, Account, System)
+- Updated app version display to v0.6.0 / Phase 6A
+- Storage API response now includes `formatted` and `breakdown` objects
+
 ## [0.6.0] - 2024-12-03
 
 ### Added

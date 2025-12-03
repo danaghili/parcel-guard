@@ -126,11 +126,25 @@ export const camerasApi = {
     return response.data
   },
 
-  update: async (
-    id: string,
-    data: { name?: string; streamUrl?: string; notificationsEnabled?: boolean },
-  ): Promise<Camera> => {
+  create: async (data: CreateCameraInput): Promise<Camera> => {
+    const response = await api.post<{ success: true; data: Camera }>('/api/cameras', data)
+    return response.data
+  },
+
+  update: async (id: string, data: UpdateCameraInput): Promise<Camera> => {
     const response = await api.put<{ success: true; data: Camera }>(`/api/cameras/${id}`, data)
+    return response.data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/cameras/${id}`)
+  },
+
+  testStream: async (streamUrl: string): Promise<StreamTestResult> => {
+    const response = await api.post<{ success: true; data: StreamTestResult }>(
+      '/api/cameras/test-stream',
+      { streamUrl },
+    )
     return response.data
   },
 }
@@ -148,6 +162,19 @@ export const systemApi = {
       { requireAuth: false },
     )
     return response
+  },
+
+  storage: async (): Promise<StorageStats> => {
+    const response = await api.get<{ success: true; data: StorageStats }>('/api/system/storage')
+    return response.data
+  },
+
+  cleanup: async (): Promise<CleanupResult> => {
+    const response = await api.post<{ success: true; data: CleanupResult }>(
+      '/api/system/storage/cleanup',
+      {},
+    )
+    return response.data
   },
 }
 
@@ -176,6 +203,10 @@ export const settingsApi = {
       {},
     )
     return response
+  },
+
+  updatePin: async (currentPin: string, newPin: string): Promise<void> => {
+    await api.put('/api/settings/pin', { currentPin, newPin })
   },
 }
 
@@ -332,4 +363,51 @@ export interface EventStats {
   today: number
   important: number
   falseAlarms: number
+}
+
+// Camera input types
+export interface CreateCameraInput {
+  id: string
+  name: string
+  streamUrl: string
+  motionSensitivity?: number
+  notificationsEnabled?: boolean
+}
+
+export interface UpdateCameraInput {
+  name?: string
+  streamUrl?: string
+  motionSensitivity?: number
+  notificationsEnabled?: boolean
+}
+
+export interface StreamTestResult {
+  accessible: boolean
+  latency?: number
+  error?: string
+}
+
+// Storage types
+export interface StorageStats {
+  total: number
+  used: number
+  available: number
+  percentage: number
+  warning: boolean
+  formatted: {
+    total: string
+    used: string
+    available: string
+  }
+  breakdown: {
+    clips: { count: number; size: number; formatted: string }
+    thumbnails: { count: number; size: number; formatted: string }
+    database: { size: number; formatted: string }
+  }
+}
+
+export interface CleanupResult {
+  eventsDeleted: number
+  filesDeleted: number
+  bytesFreed: number
 }

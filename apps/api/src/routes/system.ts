@@ -76,11 +76,32 @@ export const systemRoutes: FastifyPluginAsync = async (
     return reply.send({
       success: true,
       data: {
-        ...stats,
-        usedFormatted: formatBytes(stats.used),
-        totalFormatted: formatBytes(stats.total),
-        availableFormatted: formatBytes(stats.available),
+        total: stats.total,
+        used: stats.used,
+        available: stats.available,
+        percentage: stats.percentage,
         warning,
+        formatted: {
+          total: formatBytes(stats.total),
+          used: formatBytes(stats.used),
+          available: formatBytes(stats.available),
+        },
+        breakdown: {
+          clips: {
+            count: stats.clips.count,
+            size: stats.clips.size,
+            formatted: formatBytes(stats.clips.size),
+          },
+          thumbnails: {
+            count: stats.thumbnails.count,
+            size: stats.thumbnails.size,
+            formatted: formatBytes(stats.thumbnails.size),
+          },
+          database: {
+            size: stats.database.size,
+            formatted: formatBytes(stats.database.size),
+          },
+        },
       },
     })
   })

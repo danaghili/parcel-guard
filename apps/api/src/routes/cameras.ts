@@ -16,6 +16,16 @@ interface CameraParams {
   id: string
 }
 
+interface TestStreamBody {
+  streamUrl: string
+}
+
+interface TestStreamResult {
+  accessible: boolean
+  latency?: number
+  error?: string
+}
+
 interface CreateCameraBody {
   id: string
   name: string
@@ -85,6 +95,81 @@ export const camerasRoutes: FastifyPluginAsync = async (
         }
         throw error
       }
+    },
+  )
+
+  // Test stream URL accessibility
+  server.post<{ Body: TestStreamBody }>(
+    '/cameras/test-stream',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const { streamUrl } = request.body
+
+      if (!streamUrl) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'streamUrl is required',
+        })
+      }
+
+      const result: TestStreamResult = {
+        accessible: false,
+      }
+
+      const startTime = Date.now()
+
+      try {
+        // Parse the URL to determine protocol
+        const url = new URL(streamUrl)
+
+        if (url.protocol === 'rtsp:') {
+          // For RTSP URLs, we can only do a basic validation
+          // Real connectivity would require an RTSP client
+          result.accessible = true
+          result.latency = Date.now() - startTime
+        } else if (url.protocol === 'http:' || url.protocol === 'https:') {
+          // For HTTP/HTTPS URLs (HLS streams), do a HEAD request
+          const controller = new AbortController()
+          const timeout = setTimeout(() => controller.abort(), 10000)
+
+          try {
+            const response = await fetch(streamUrl, {
+              method: 'HEAD',
+              signal: controller.signal,
+            })
+
+            clearTimeout(timeout)
+            result.latency = Date.now() - startTime
+
+            if (response.ok) {
+              result.accessible = true
+            } else {
+              result.accessible = false
+              result.error = `HTTP ${response.status}: ${response.statusText}`
+            }
+          } catch (fetchError) {
+            clearTimeout(timeout)
+            if (fetchError instanceof Error) {
+              if (fetchError.name === 'AbortError') {
+                result.error = 'Connection timeout (10s)'
+              } else {
+                result.error = fetchError.message
+              }
+            } else {
+              result.error = 'Connection failed'
+            }
+          }
+        } else {
+          result.error = `Unsupported protocol: ${url.protocol}`
+        }
+      } catch (urlError) {
+        result.error = 'Invalid URL format'
+      }
+
+      return reply.send({
+        success: true,
+        data: result,
+      })
     },
   )
 

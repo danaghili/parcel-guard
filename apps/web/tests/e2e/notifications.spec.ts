@@ -121,9 +121,6 @@ test.describe('Notification Settings', () => {
     // Find cooldown slider
     const slider = page.locator('input[type="range"]')
 
-    // Get initial value
-    const initialValue = await slider.inputValue()
-
     // Set to different value
     await slider.fill('120')
 
@@ -169,9 +166,6 @@ test.describe('Notification Settings', () => {
   test('should show per-camera notification toggles', async ({ page }) => {
     await page.goto('/settings')
     await page.getByRole('button', { name: /notifications/i }).click()
-
-    // Should show Camera Notifications section if cameras exist
-    const cameraSection = page.getByText('Camera Notifications')
 
     // This section only shows if cameras exist in the database
     // Just verify the modal loads without errors
@@ -229,8 +223,6 @@ test.describe('Notification Settings', () => {
     await page.goto('/settings')
     await page.getByRole('button', { name: /notifications/i }).click()
 
-    // Should show loading spinner initially
-    const spinner = page.locator('[class*="animate-spin"]')
     // Loading may be too fast to catch, so just verify modal eventually loads
     await expect(page.getByText('Notification Settings')).toBeVisible({ timeout: 10000 })
   })
