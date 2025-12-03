@@ -344,11 +344,11 @@ test.describe('Events Page (Phase 4)', () => {
     // Wait for stats to load
     await page.waitForTimeout(500)
 
-    // Check for stat labels
-    await expect(page.getByText('Total')).toBeVisible()
-    await expect(page.getByText('Today')).toBeVisible()
-    await expect(page.getByText('Important')).toBeVisible()
-    await expect(page.getByText('False Alarms')).toBeVisible()
+    // Check for stat labels (use exact match to avoid matching timestamps)
+    await expect(page.locator('p.text-xs:has-text("Total")')).toBeVisible()
+    await expect(page.locator('p.text-xs:has-text("Today")')).toBeVisible()
+    await expect(page.locator('p.text-xs:has-text("Important")')).toBeVisible()
+    await expect(page.locator('p.text-xs:has-text("False Alarms")')).toBeVisible()
   })
 
   test('should display filter controls', async ({ page }) => {
@@ -563,7 +563,9 @@ test.describe('Dashboard Events Integration (Phase 4)', () => {
 
   test('should display recent events section', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Recent Events' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'View all' })).toBeVisible()
+    // Find View all link within the Recent Events section (there are multiple View all links on the page)
+    const recentEventsSection = page.locator('section', { has: page.getByText('Recent Events') })
+    await expect(recentEventsSection.getByRole('link', { name: 'View all' })).toBeVisible()
   })
 
   test('should navigate to events page from View all link', async ({ page }) => {

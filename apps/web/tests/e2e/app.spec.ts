@@ -3,7 +3,8 @@ import { test, expect, Page } from '@playwright/test'
 // Helper to login before tests
 async function login(page: Page): Promise<void> {
   await page.goto('/login')
-  const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+  await page.evaluate(() => localStorage.clear())
+  const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
   await pinInputs.first().click()
   await page.keyboard.type('1234')
   await expect(page).toHaveURL('/', { timeout: 5000 })
@@ -11,6 +12,8 @@ async function login(page: Page): Promise<void> {
 
 test.describe('ParcelGuard App', () => {
   test.beforeEach(async ({ page }) => {
+    // Navigate first, then clear localStorage
+    await page.goto('/')
     await page.evaluate(() => localStorage.clear())
   })
 
@@ -32,20 +35,20 @@ test.describe('ParcelGuard App', () => {
   test('should have working bottom navigation', async ({ page }) => {
     await login(page)
 
-    // Navigate to Live
-    await page.getByRole('link', { name: /live/i }).click()
+    // Navigate to Live (use the bottom nav link, which has exact name "Live")
+    await page.getByRole('link', { name: 'Live', exact: true }).click()
     await expect(page).toHaveURL('/live')
 
     // Navigate to Events
-    await page.getByRole('link', { name: /events/i }).click()
+    await page.getByRole('link', { name: 'Events', exact: true }).click()
     await expect(page).toHaveURL('/events')
 
     // Navigate to Settings
-    await page.getByRole('link', { name: /settings/i }).click()
+    await page.getByRole('link', { name: 'Settings', exact: true }).click()
     await expect(page).toHaveURL('/settings')
 
     // Navigate back to Dashboard
-    await page.getByRole('link', { name: /home|dashboard/i }).click()
+    await page.getByRole('link', { name: 'Dashboard', exact: true }).click()
     await expect(page).toHaveURL('/')
   })
 
@@ -71,20 +74,19 @@ test.describe('ParcelGuard App', () => {
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => localStorage.clear())
     await login(page)
   })
 
   test('should display system status', async ({ page }) => {
-    // Dashboard should show some system information
+    // Dashboard should show Cameras section with camera status
     await expect(
-      page.getByText(/camera|online|offline|status/i)
+      page.getByRole('heading', { name: 'Cameras' })
     ).toBeVisible({ timeout: 5000 })
   })
 
   test('should have quick link to live view', async ({ page }) => {
-    // Should have a way to quickly access live view from dashboard
-    const liveViewLink = page.getByRole('link', { name: /live|view cameras/i })
+    // Should have a Live View card on the dashboard
+    const liveViewLink = page.getByRole('link', { name: 'Live View' })
     await expect(liveViewLink).toBeVisible()
   })
 })

@@ -3,7 +3,8 @@ import { test, expect, Page } from '@playwright/test'
 // Helper to login before tests
 async function login(page: Page): Promise<void> {
   await page.goto('/login')
-  const pinInputs = page.locator('input[type="password"], input[type="tel"]')
+  await page.evaluate(() => localStorage.clear())
+  const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
   await pinInputs.first().click()
   await page.keyboard.type('1234')
   await expect(page).toHaveURL('/', { timeout: 5000 })
@@ -11,14 +12,12 @@ async function login(page: Page): Promise<void> {
 
 test.describe('Live View', () => {
   test.beforeEach(async ({ page }) => {
-    // Clear state and login before each test
-    await page.evaluate(() => localStorage.clear())
     await login(page)
   })
 
   test('should navigate to live view from dashboard', async ({ page }) => {
-    // Find and click live view link in navigation
-    const liveViewLink = page.getByRole('link', { name: /live/i })
+    // Find and click live view link in bottom navigation (exact match)
+    const liveViewLink = page.getByRole('link', { name: 'Live', exact: true })
     await liveViewLink.click()
 
     await expect(page).toHaveURL('/live')
@@ -85,8 +84,8 @@ test.describe('Live View', () => {
 
     await page.goto('/live')
 
-    // Should show error message
-    await expect(page.getByText(/failed to load|error|try again/i)).toBeVisible({ timeout: 5000 })
+    // Should show error message - use first() to handle multiple matches
+    await expect(page.getByText(/failed to load|error/i).first()).toBeVisible({ timeout: 5000 })
 
     // Should show retry button
     await expect(page.getByRole('button', { name: /try again|retry/i })).toBeVisible()
@@ -139,7 +138,6 @@ test.describe('Live View', () => {
 
 test.describe('Camera Grid', () => {
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => localStorage.clear())
     await login(page)
   })
 
@@ -197,8 +195,9 @@ test.describe('Camera Grid', () => {
     // Should show camera name
     await expect(page.getByText('Back Garden')).toBeVisible({ timeout: 5000 })
 
-    // Should indicate offline status
-    await expect(page.getByText(/offline/i)).toBeVisible()
+    // For offline cameras, the UI shows "last seen" time (e.g., "1h ago") instead of "offline"
+    // Check for the grey status indicator (shown via a small grey dot)
+    await expect(page.locator('.bg-slate-500')).toBeVisible()
   })
 
   test('should display multiple cameras in grid layout', async ({ page }) => {
@@ -231,7 +230,6 @@ test.describe('Camera Grid', () => {
 
 test.describe('Single Camera View', () => {
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => localStorage.clear())
     await login(page)
   })
 
@@ -301,8 +299,8 @@ test.describe('Single Camera View', () => {
 
     await page.goto('/live/cam1')
 
-    // Should show back button
-    await expect(page.getByRole('button', { name: /back/i }).or(page.getByText('Back'))).toBeVisible({ timeout: 5000 })
+    // Should show back button - look for button containing "Back" text
+    await expect(page.locator('button:has-text("Back")').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('should return to grid view when clicking back', async ({ page }) => {
@@ -332,8 +330,8 @@ test.describe('Single Camera View', () => {
 
     await page.goto('/live/cam1')
 
-    // Click back button
-    await page.getByRole('button', { name: /back/i }).or(page.getByText('Back')).click()
+    // Click back button - use specific locator
+    await page.locator('button:has-text("Back")').first().click()
 
     // Should return to live view grid
     await expect(page).toHaveURL('/live')
@@ -411,8 +409,9 @@ test.describe('Single Camera View', () => {
 
     // Should show connecting status initially (may be brief)
     // The status could be "Connecting..." or quickly switch to another state
+    // Use first() to handle multiple matches
     await expect(
-      page.getByText(/connecting|loading|live/i)
+      page.getByText(/connecting|loading|live/i).first()
     ).toBeVisible({ timeout: 5000 })
   })
 })
@@ -421,7 +420,6 @@ test.describe('Mobile Viewport', () => {
   test.use({ viewport: { width: 375, height: 667 } }) // iPhone SE size
 
   test.beforeEach(async ({ page }) => {
-    await page.evaluate(() => localStorage.clear())
     await login(page)
   })
 

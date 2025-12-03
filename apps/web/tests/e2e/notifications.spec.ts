@@ -52,8 +52,8 @@ test.describe('Notification Settings', () => {
     await page.goto('/settings')
     await page.getByRole('button', { name: /notifications/i }).click()
 
-    // Should show Quiet Hours section
-    await expect(page.getByText('Quiet Hours')).toBeVisible()
+    // Should show Quiet Hours section - use exact match to avoid matching "Quiet hours currently active"
+    await expect(page.getByText('Quiet Hours', { exact: true })).toBeVisible()
     await expect(page.getByText('Pause notifications during these hours')).toBeVisible()
   })
 
@@ -61,8 +61,8 @@ test.describe('Notification Settings', () => {
     await page.goto('/settings')
     await page.getByRole('button', { name: /notifications/i }).click()
 
-    // Wait for modal content to load
-    await expect(page.getByText('Quiet Hours')).toBeVisible()
+    // Wait for modal content to load - use exact match
+    await expect(page.getByText('Quiet Hours', { exact: true })).toBeVisible()
 
     // Check if time inputs are present (they show when quiet hours is enabled)
     const timeInputs = page.locator('input[type="time"]')
@@ -82,8 +82,8 @@ test.describe('Notification Settings', () => {
     await page.goto('/settings')
     await page.getByRole('button', { name: /notifications/i }).click()
 
-    // Wait for content to load
-    await expect(page.getByText('Quiet Hours')).toBeVisible()
+    // Wait for content to load - use exact match
+    await expect(page.getByText('Quiet Hours', { exact: true })).toBeVisible()
 
     // Check if time inputs exist (quiet hours enabled)
     const timeInputs = page.locator('input[type="time"]')
