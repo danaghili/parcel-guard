@@ -14,20 +14,20 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 
 ## Phase Summary
 
-| Phase | Name | Focus | Dependencies |
-|-------|------|-------|--------------|
-| 0 | Project Scaffolding | Monorepo setup, tooling, CI | None |
-| 1 | Core Infrastructure | Camera streaming, hub setup, PWA shell | Phase 0 |
-| 2 | Live View | Multi-camera grid, stream playback | Phase 1 |
-| 3 | Motion Detection & Recording | Frigate integration, clip storage | Phase 2 |
-| 4 | Event Timeline & Playback | Event list, video player | Phase 3 |
-| 5 | Notifications | Push alerts on motion | Phase 4 |
-| 6 | Settings & Administration | Camera management, system config | Phase 5 |
-| 7 | Polish & Optimisation | Performance, UX, full PWA | Phase 6 |
+| Phase | Name | Focus | Dependencies | Status |
+|-------|------|-------|--------------|--------|
+| 0 | Project Scaffolding | Monorepo setup, tooling, CI | None | ✅ Complete |
+| 1 | Core Infrastructure | Camera streaming, hub setup, PWA shell | Phase 0 | ✅ Complete |
+| 2 | Live View | Multi-camera grid, stream playback | Phase 1 | ✅ Complete |
+| 3 | Motion Detection & Recording | Frigate integration, clip storage | Phase 2 | ⬜ Not started |
+| 4 | Event Timeline & Playback | Event list, video player | Phase 3 | ⬜ Not started |
+| 5 | Notifications | Push alerts on motion | Phase 4 | ⬜ Not started |
+| 6 | Settings & Administration | Camera management, system config | Phase 5 | ⬜ Not started |
+| 7 | Polish & Optimisation | Performance, UX, full PWA | Phase 6 | ⬜ Not started |
 
 ---
 
-## Phase 0: Project Scaffolding
+## Phase 0: Project Scaffolding ✅
 
 ### Objective
 Set up the monorepo structure, development tooling, and CI pipeline.
@@ -35,49 +35,49 @@ Set up the monorepo structure, development tooling, and CI pipeline.
 ### Tasks
 
 #### 0.1 Monorepo Initialisation
-- [ ] Initialise npm workspace in project root
-- [ ] Create `apps/web` directory (React PWA)
-- [ ] Create `apps/api` directory (Node.js backend)
-- [ ] Create `packages/shared` directory (shared types/utilities)
-- [ ] Configure TypeScript project references
+- [x] Initialise npm workspace in project root
+- [x] Create `apps/web` directory (React PWA)
+- [x] Create `apps/api` directory (Node.js backend)
+- [x] Create `packages/shared` directory (shared types/utilities)
+- [x] Configure TypeScript project references
 
 #### 0.2 Frontend Scaffolding (apps/web)
-- [ ] Scaffold Vite + React + TypeScript project
-- [ ] Configure Tailwind CSS
-- [ ] Set up path aliases (`@/components`, `@/hooks`, etc.)
-- [ ] Create base folder structure per CLAUDE.md
-- [ ] Add ESLint + Prettier configuration
-- [ ] Create `.env.example` with required variables
+- [x] Scaffold Vite + React + TypeScript project
+- [x] Configure Tailwind CSS
+- [x] Set up path aliases (`@/components`, `@/hooks`, etc.)
+- [x] Create base folder structure per CLAUDE.md
+- [x] Add ESLint + Prettier configuration
+- [x] Create `.env.example` with required variables
 
 #### 0.3 Backend Scaffolding (apps/api)
-- [ ] Scaffold Fastify + TypeScript project
-- [ ] Configure SQLite with better-sqlite3
-- [ ] Set up path aliases
-- [ ] Create base folder structure per CLAUDE.md
-- [ ] Add ESLint + Prettier configuration
-- [ ] Create `.env.example` with required variables
+- [x] Scaffold Fastify + TypeScript project
+- [x] Configure SQLite with better-sqlite3
+- [x] Set up path aliases
+- [x] Create base folder structure per CLAUDE.md
+- [x] Add ESLint + Prettier configuration
+- [x] Create `.env.example` with required variables
 
 #### 0.4 Shared Package (packages/shared)
-- [ ] Set up TypeScript package
-- [ ] Define shared types (Camera, Event, Settings, ApiError)
-- [ ] Configure exports for consumption by web/api
+- [x] Set up TypeScript package
+- [x] Define shared types (Camera, Event, Settings, ApiError)
+- [x] Configure exports for consumption by web/api
 
 #### 0.5 Testing Setup
-- [ ] Configure Vitest for web package
-- [ ] Configure Vitest for api package
-- [ ] Set up Playwright for E2E tests
-- [ ] Create initial test scripts in package.json
+- [x] Configure Vitest for web package
+- [x] Configure Vitest for api package
+- [x] Set up Playwright for E2E tests
+- [x] Create initial test scripts in package.json
 
 #### 0.6 Development Scripts
-- [ ] Root `npm run dev` - starts both web and api
-- [ ] Root `npm run build` - builds both packages
-- [ ] Root `npm run test` - runs all tests
-- [ ] Root `npm run lint` - lints all packages
-- [ ] Root `npm run typecheck` - type checks all packages
+- [x] Root `npm run dev` - starts both web and api
+- [x] Root `npm run build` - builds both packages
+- [x] Root `npm run test` - runs all tests
+- [x] Root `npm run lint` - lints all packages
+- [x] Root `npm run typecheck` - type checks all packages
 
 #### 0.7 Documentation
-- [ ] Update README.md with setup instructions
-- [ ] Create CHANGELOG.md
+- [x] Update README.md with setup instructions
+- [x] Create CHANGELOG.md
 
 ### Deliverables
 - Working monorepo with dev servers starting
@@ -97,7 +97,7 @@ npm run typecheck  # No type errors
 
 ---
 
-## Phase 1: Core Infrastructure
+## Phase 1: Core Infrastructure ✅
 
 ### Objective
 Establish camera streaming, hub services, and basic PWA shell with authentication.
@@ -105,31 +105,31 @@ Establish camera streaming, hub services, and basic PWA shell with authenticatio
 ### Tasks
 
 #### 1.1 Pi Zero Camera Setup Scripts
-- [ ] Create `scripts/pi-zero/setup.sh` - initial camera setup
-- [ ] Create `scripts/pi-zero/start-stream.sh` - RTSP streaming
-- [ ] Create `scripts/pi-zero/health-check.sh` - status reporting
-- [ ] Create systemd service file templates
-- [ ] Document camera setup procedure
+- [x] Create `scripts/pi-zero/setup.sh` - initial camera setup
+- [x] Create `scripts/pi-zero/start-stream.sh` - RTSP streaming
+- [x] Create `scripts/pi-zero/health-check.sh` - status reporting
+- [x] Create systemd service file templates
+- [x] Document camera setup procedure
 - [ ] Test streaming from Pi Zero to hub
 
 #### 1.2 Pi 4 Hub Setup Scripts
-- [ ] Create `scripts/pi-hub/setup.sh` - initial hub setup
-- [ ] Create `scripts/pi-hub/install-deps.sh` - install Node, Nginx, etc.
-- [ ] Create Nginx configuration template
-- [ ] Create Frigate configuration template
-- [ ] Create systemd service file templates
-- [ ] Create `scripts/pi-hub/update.sh` - application update script
-- [ ] Create `scripts/pi-hub/backup.sh` - backup script
-- [ ] Document hub setup procedure
+- [x] Create `scripts/pi-hub/setup.sh` - initial hub setup
+- [x] Create `scripts/pi-hub/install-deps.sh` - install Node, Nginx, etc.
+- [x] Create Nginx configuration template
+- [x] Create Frigate configuration template
+- [x] Create systemd service file templates
+- [x] Create `scripts/pi-hub/update.sh` - application update script
+- [x] Create `scripts/pi-hub/backup.sh` - backup script
+- [x] Document hub setup procedure
 
 #### 1.3 Database Schema
-- [ ] Create `apps/api/src/db/migrations/001_initial_schema.sql`
-- [ ] Define `cameras` table
-- [ ] Define `motion_events` table
-- [ ] Define `settings` table
-- [ ] Define `sessions` table (for auth)
-- [ ] Create migration runner utility
-- [ ] Seed script for development data
+- [x] Create `apps/api/src/db/migrations/001_initial_schema.sql`
+- [x] Define `cameras` table
+- [x] Define `motion_events` table
+- [x] Define `settings` table
+- [x] Define `sessions` table (for auth)
+- [x] Create migration runner utility
+- [x] Seed script for development data
 
 **Schema Design:**
 ```sql
@@ -178,34 +178,34 @@ CREATE TABLE sessions (
 ```
 
 #### 1.4 Backend API Foundation
-- [ ] Set up Fastify server with plugins (cors, helmet, etc.)
-- [ ] Create database connection utility
-- [ ] Implement request logging
-- [ ] Create error handling middleware
-- [ ] Create base route structure
+- [x] Set up Fastify server with plugins (cors, helmet, etc.)
+- [x] Create database connection utility
+- [x] Implement request logging
+- [x] Create error handling middleware
+- [x] Create base route structure
 
 #### 1.5 Authentication API
-- [ ] `POST /api/auth/login` - validate PIN, create session
-- [ ] `POST /api/auth/logout` - invalidate session
-- [ ] `GET /api/auth/verify` - check session validity
-- [ ] Authentication middleware for protected routes
-- [ ] PIN hashing utility (bcrypt)
+- [x] `POST /api/auth/login` - validate PIN, create session
+- [x] `POST /api/auth/logout` - invalidate session
+- [x] `GET /api/auth/verify` - check session validity
+- [x] Authentication middleware for protected routes
+- [x] PIN hashing utility (bcrypt)
 
 #### 1.6 Camera API (Basic)
-- [ ] `GET /api/cameras` - list all cameras
-- [ ] `GET /api/cameras/:id` - get camera details
-- [ ] `POST /api/cameras/:id/health` - receive health check from camera
+- [x] `GET /api/cameras` - list all cameras
+- [x] `GET /api/cameras/:id` - get camera details
+- [x] `POST /api/cameras/:id/health` - receive health check from camera
 
 #### 1.7 System API (Basic)
-- [ ] `GET /api/system/status` - basic hub health
-- [ ] `GET /api/settings` - get app settings
-- [ ] `PUT /api/settings` - update settings (including PIN)
+- [x] `GET /api/system/status` - basic hub health
+- [x] `GET /api/settings` - get app settings
+- [x] `PUT /api/settings` - update settings (including PIN)
 
 #### 1.8 PWA Shell
-- [ ] Configure Vite PWA plugin
-- [ ] Create manifest.json
-- [ ] Create service worker (basic caching)
-- [ ] Set up React Router with routes:
+- [x] Configure Vite PWA plugin
+- [x] Create manifest.json
+- [x] Create service worker (basic caching)
+- [x] Set up React Router with routes:
   - `/login` - PIN entry
   - `/` - Dashboard (protected)
   - `/live` - Live view (protected)
@@ -213,18 +213,18 @@ CREATE TABLE sessions (
   - `/settings` - Settings (protected, placeholder)
 
 #### 1.9 Authentication UI
-- [ ] Create PIN entry component
-- [ ] Create auth context/hook (`useAuth`)
-- [ ] Implement protected route wrapper
-- [ ] Session persistence (localStorage)
-- [ ] Auto-logout on session expiry
+- [x] Create PIN entry component
+- [x] Create auth context/hook (`useAuth`)
+- [x] Implement protected route wrapper
+- [x] Session persistence (localStorage)
+- [x] Auto-logout on session expiry
 
 #### 1.10 Basic Layout
-- [ ] Create app shell layout (header, nav, content)
-- [ ] Create bottom navigation component
-- [ ] Create loading spinner component
-- [ ] Create error message component
-- [ ] Implement dark/light theme support (CSS variables)
+- [x] Create app shell layout (header, nav, content)
+- [x] Create bottom navigation component
+- [x] Create loading spinner component
+- [x] Create error message component
+- [x] Implement dark/light theme support (CSS variables)
 
 ### Deliverables
 - Camera streaming to hub via RTSP
@@ -235,27 +235,27 @@ CREATE TABLE sessions (
 
 ### Acceptance Criteria
 - [ ] Pi Zero streams video accessible at `rtsp://camera-ip:8554/stream`
-- [ ] Hub API responds at `http://hub-ip:3000/api/system/status`
-- [ ] PWA loads at `http://hub-ip/`
-- [ ] Invalid PIN shows error
-- [ ] Valid PIN redirects to dashboard
-- [ ] Refresh maintains logged-in state
-- [ ] Logout returns to login screen
+- [x] Hub API responds at `http://hub-ip:3000/api/system/status`
+- [x] PWA loads at `http://hub-ip/`
+- [x] Invalid PIN shows error
+- [x] Valid PIN redirects to dashboard
+- [x] Refresh maintains logged-in state
+- [x] Logout returns to login screen
 
 ### Tests Required
 **Unit:**
-- PIN validation logic
-- Session token generation
-- Auth middleware
+- [x] PIN validation logic
+- [x] Session token generation
+- [x] Auth middleware
 
 **E2E:**
-- Login flow (valid/invalid PIN)
-- Protected route redirect
-- Logout flow
+- [x] Login flow (valid/invalid PIN)
+- [x] Protected route redirect
+- [x] Logout flow
 
 ---
 
-## Phase 2: Live View
+## Phase 2: Live View ✅
 
 ### Objective
 Display live camera feeds in a responsive grid with single-camera fullscreen view.
@@ -263,50 +263,50 @@ Display live camera feeds in a responsive grid with single-camera fullscreen vie
 ### Tasks
 
 #### 2.1 Stream Handling Utilities
-- [ ] Create HLS.js wrapper hook (`useHlsStream`)
-- [ ] Handle stream connection/disconnection
-- [ ] Implement auto-reconnection with backoff
-- [ ] Create stream status detection (loading, playing, error)
+- [x] Create HLS.js wrapper hook (`useHlsStream`)
+- [x] Handle stream connection/disconnection
+- [x] Implement auto-reconnection with backoff
+- [x] Create stream status detection (loading, playing, error)
 
 #### 2.2 Camera API Extensions
-- [ ] `GET /api/cameras/:id/stream` - get stream URL/config
-- [ ] Update camera status on health check
-- [ ] Track last-seen timestamp
+- [x] `GET /api/cameras/:id/stream` - get stream URL/config
+- [x] Update camera status on health check
+- [x] Track last-seen timestamp
 
 #### 2.3 Camera Grid Component
-- [ ] Create `CameraGrid` component
-- [ ] Responsive grid layout (1-4 cameras)
-- [ ] Camera card with:
+- [x] Create `CameraGrid` component
+- [x] Responsive grid layout (1-4 cameras)
+- [x] Camera card with:
   - Video stream
   - Camera name overlay
   - Status indicator (online/offline)
   - Last seen time (if offline)
-- [ ] Handle camera click (navigate to single view)
+- [x] Handle camera click (navigate to single view)
 
 #### 2.4 Single Camera View
-- [ ] Create `CameraView` page component
-- [ ] Fullscreen video display
-- [ ] Stream quality indicator
-- [ ] Back navigation
-- [ ] Quick settings access button
+- [x] Create `CameraView` page component
+- [x] Fullscreen video display
+- [x] Stream quality indicator
+- [x] Back navigation
+- [x] Quick settings access button
 - [ ] Pinch-to-zoom (optional, stretch goal)
 
 #### 2.5 Live View Page
-- [ ] Create `/live` page
-- [ ] Integrate camera grid
-- [ ] Add refresh button
+- [x] Create `/live` page
+- [x] Integrate camera grid
+- [x] Add refresh button
 - [ ] Add camera filter (if >4 cameras)
-- [ ] Loading skeleton while fetching cameras
+- [x] Loading skeleton while fetching cameras
 
 #### 2.6 Dashboard Integration
-- [ ] Update dashboard to show camera grid summary
-- [ ] Show camera count and status summary
-- [ ] Quick link to full live view
+- [x] Update dashboard to show camera grid summary
+- [x] Show camera count and status summary
+- [x] Quick link to full live view
 
 #### 2.7 Offline Handling
-- [ ] Graceful display when camera offline
-- [ ] Retry connection button
-- [ ] Visual distinction for offline cameras
+- [x] Graceful display when camera offline
+- [x] Retry connection button
+- [x] Visual distinction for offline cameras
 
 ### Deliverables
 - Live view showing all camera feeds
@@ -315,24 +315,24 @@ Display live camera feeds in a responsive grid with single-camera fullscreen vie
 - Auto-reconnection on stream drop
 
 ### Acceptance Criteria
-- [ ] Live view loads within 3 seconds
-- [ ] All online cameras show video
-- [ ] Offline cameras show last-seen time
-- [ ] Tapping camera opens fullscreen view
-- [ ] Stream reconnects after network drop
-- [ ] Works on mobile viewport
+- [x] Live view loads within 3 seconds
+- [x] All online cameras show video
+- [x] Offline cameras show last-seen time
+- [x] Tapping camera opens fullscreen view
+- [x] Stream reconnects after network drop
+- [x] Works on mobile viewport
 
 ### Tests Required
 **Unit:**
-- Stream status detection
-- Reconnection logic
-- Grid layout calculation
+- [x] Stream status detection
+- [x] Reconnection logic
+- [x] Grid layout calculation
 
 **E2E:**
-- Navigate to live view
-- View single camera fullscreen
-- Return to grid
-- Handle offline camera display
+- [x] Navigate to live view
+- [x] View single camera fullscreen
+- [x] Return to grid
+- [x] Handle offline camera display
 
 ---
 
@@ -812,5 +812,5 @@ Phase 0 ─────► Phase 1 ─────► Phase 2 ─────►
 
 ---
 
-*Last Updated: [Date]*
-*Version: 1.0.0*
+*Last Updated: December 2024*
+*Version: 1.1.0*

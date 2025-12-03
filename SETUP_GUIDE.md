@@ -1,0 +1,653 @@
+# ParcelGuard Setup Guide
+
+A step-by-step guide to assembling and configuring your ParcelGuard security system.
+
+---
+
+## Table of Contents
+
+1. [Parts Checklist](#1-parts-checklist)
+2. [Tools Required](#2-tools-required)
+3. [Hub Assembly (Pi 4)](#3-hub-assembly-pi-4)
+4. [Camera Unit Assembly (Pi Zero)](#4-camera-unit-assembly-pi-zero)
+5. [Preparing SD Cards](#5-preparing-sd-cards)
+6. [First Boot - Hub](#6-first-boot---hub)
+7. [First Boot - Cameras](#7-first-boot---cameras)
+8. [Testing the System](#8-testing-the-system)
+9. [Concealment Tips](#9-concealment-tips)
+10. [Troubleshooting](#10-troubleshooting)
+
+---
+
+## 1. Parts Checklist
+
+Before starting, verify you have all components.
+
+### Hub (Central Server)
+
+| Item | Qty | Notes |
+|------|-----|-------|
+| Raspberry Pi 4 (4GB RAM) | 1 | 4GB recommended for running Frigate |
+| Official Pi 4 USB-C Power Supply (5.1V 3A) | 1 | UK plug, must be 3A for reliable operation |
+| Argon ONE M.2 Case (or similar) | 1 | Provides cooling and SSD mounting |
+| MicroSD Card (32GB+) | 1 | For the operating system |
+| M.2 SATA SSD (256GB) | 1 | For video storage - must be SATA, not NVMe |
+| Ethernet Cable (optional) | 1 | For initial setup if WiFi is problematic |
+
+### Per Camera Unit (×2)
+
+| Item | Qty | Notes |
+|------|-----|-------|
+| Raspberry Pi Zero 2 W | 1 | Must be the "2 W" version (has WiFi) |
+| Camera Module (ZDE 5MP OV5647) | 1 | Includes ribbon cable and Zero adapter |
+| MicroSD Card (16GB+) | 1 | For the operating system |
+| 20,000mAh USB Power Bank | 2 | Two per camera (one in use, one charging) |
+| USB-A to Micro USB Cable | 1 | Short cable preferred (30cm) |
+
+### Accessories
+
+| Item | Qty | Notes |
+|------|-----|-------|
+| MicroSD Card Reader | 1 | For flashing SD cards from your computer |
+| Mini HDMI to HDMI Adapter/Cable | 1 | Optional - for debugging Pi Zero |
+| Micro USB OTG Adapter | 1 | Optional - for connecting keyboard to Pi Zero |
+
+---
+
+## 2. Tools Required
+
+- Small Phillips screwdriver (for Argon case)
+- Computer with SD card slot or USB card reader
+- Internet connection
+- Mobile phone (for testing the PWA)
+
+**Software to download:**
+- [Raspberry Pi Imager](https://www.raspberrypi.com/software/) - Install on your computer
+
+---
+
+## 3. Hub Assembly (Pi 4)
+
+### Step 3.1: Prepare the Argon ONE Case
+
+1. Unbox the Argon ONE M.2 case
+2. Locate all parts:
+   - Top cover (with fan and ports)
+   - Bottom base (M.2 SSD bay)
+   - Thermal pads
+   - Screws
+   - GPIO extension board
+
+### Step 3.2: Install the SSD
+
+**Important:** Do this BEFORE inserting the Pi 4.
+
+1. Remove the bottom cover of the Argon case (4 screws underneath)
+2. Locate the M.2 SATA slot inside
+3. Insert your M.2 SSD at a 30° angle into the slot
+4. Press down and secure with the small screw provided
+5. Replace the bottom cover
+
+### Step 3.3: Apply Thermal Pads
+
+1. Locate the thermal pads (usually included with the case)
+2. Apply thermal pads to the Pi 4's CPU and RAM chips:
+   - Large pad on the main CPU (center of board)
+   - Smaller pads on RAM chips if provided
+3. Remove the protective film from both sides of each pad
+
+### Step 3.4: Install the Pi 4
+
+1. Align the Pi 4 with the case, GPIO pins facing the extension board
+2. Gently press the Pi 4 onto the GPIO extension connector
+3. Ensure all ports align with the case openings
+4. The board should sit flat with thermal pads making contact with the case lid
+
+### Step 3.5: Close the Case
+
+1. Position the top cover over the Pi 4
+2. Insert and tighten the 4 corner screws
+3. Don't overtighten - snug is sufficient
+
+### Step 3.6: Connect Power (Don't power on yet!)
+
+1. Set the case aside - we'll flash the SD card first
+2. DO NOT insert the SD card or connect power yet
+
+---
+
+## 4. Camera Unit Assembly (Pi Zero)
+
+Repeat these steps for each camera unit.
+
+### Step 4.1: Inspect the Camera Module
+
+1. Unbox the camera module carefully
+2. You should have:
+   - Camera board with lens
+   - Standard ribbon cable (for full-size Pi)
+   - Pi Zero adapter ribbon cable (shorter, different width connectors)
+3. **Handle by the edges only** - don't touch the lens or ribbon contacts
+
+### Step 4.2: Identify the Correct Cable
+
+The Pi Zero uses a **smaller camera connector** than the Pi 4. You need the adapter cable:
+- One end: Narrow (fits Pi Zero) - usually 22-pin
+- Other end: Wide (fits camera module) - usually 15-pin
+
+### Step 4.3: Connect Cable to Camera Module
+
+1. On the camera board, locate the ribbon connector
+2. Gently pull up the black/brown locking tab (it hinges, don't remove it)
+3. Insert the **wide end** of the ribbon cable:
+   - Silver contacts facing DOWN (toward the camera board)
+   - Blue backing facing UP
+4. Push the locking tab back down to secure
+
+### Step 4.4: Connect Cable to Pi Zero
+
+1. Locate the camera connector on the Pi Zero (labeled "CAMERA")
+2. Gently pull up the locking tab
+3. Insert the **narrow end** of the ribbon cable:
+   - Silver contacts facing DOWN (toward the Pi Zero board)
+   - Blue backing facing UP
+4. Push the locking tab back down firmly
+
+### Step 4.5: Verify Connection
+
+- The ribbon should be straight, not twisted
+- Both ends should be fully inserted and locked
+- The cable should have a little slack (don't stretch it tight)
+
+### Step 4.6: Set Aside
+
+1. Place the assembled camera unit somewhere safe
+2. DO NOT connect power yet - we need to flash the SD card first
+
+---
+
+## 5. Preparing SD Cards
+
+You'll flash 3 SD cards total: 1 for the hub, 2 for cameras.
+
+### Step 5.1: Download and Install Raspberry Pi Imager
+
+1. Go to https://www.raspberrypi.com/software/
+2. Download for your operating system
+3. Install and open the application
+
+### Step 5.2: Flash the Hub SD Card
+
+1. Insert the 32GB SD card into your computer
+
+2. In Raspberry Pi Imager:
+   - Click **"Choose Device"** → Select **"Raspberry Pi 4"**
+   - Click **"Choose OS"** → **"Raspberry Pi OS (other)"** → **"Raspberry Pi OS Lite (64-bit)"**
+   - Click **"Choose Storage"** → Select your SD card
+
+3. Click the **gear icon** (or Ctrl+Shift+X) for advanced options:
+
+   **General tab:**
+   - ✅ Set hostname: `parcelguard-hub`
+   - ✅ Set username and password:
+     - Username: `pi`
+     - Password: (choose a secure password - write it down!)
+   - ✅ Configure wireless LAN:
+     - SSID: (your WiFi network name)
+     - Password: (your WiFi password)
+     - Country: GB (or your country code)
+   - ✅ Set locale settings:
+     - Time zone: Europe/London (or your timezone)
+     - Keyboard layout: gb (or your layout)
+
+   **Services tab:**
+   - ✅ Enable SSH
+   - Select "Use password authentication"
+
+4. Click **"Save"**
+
+5. Click **"Write"** and confirm
+   - This will erase the SD card and flash the OS
+   - Wait for it to complete and verify
+
+6. Remove the SD card and label it "HUB"
+
+### Step 5.3: Flash Camera SD Cards
+
+Repeat for each camera (2 total):
+
+1. Insert a 16GB SD card
+
+2. In Raspberry Pi Imager:
+   - Click **"Choose Device"** → Select **"Raspberry Pi Zero 2 W"**
+   - Click **"Choose OS"** → **"Raspberry Pi OS (other)"** → **"Raspberry Pi OS Lite (64-bit)"**
+   - Click **"Choose Storage"** → Select your SD card
+
+3. Click the **gear icon** for advanced options:
+
+   **For Camera 1:**
+   - Hostname: `parcelguard-cam1`
+   - Username: `pi`
+   - Password: (same as hub, or different - write it down!)
+   - WiFi: (same network as hub)
+   - Timezone and keyboard: (same as hub)
+   - ✅ Enable SSH
+
+   **For Camera 2:**
+   - Hostname: `parcelguard-cam2`
+   - (All other settings same as Camera 1)
+
+4. Click **"Save"**, then **"Write"**
+
+5. Label the SD cards "CAM1" and "CAM2"
+
+---
+
+## 6. First Boot - Hub
+
+### Step 6.1: Insert SD Card and Power On
+
+1. Insert the "HUB" SD card into the Pi 4's slot (bottom of Argon case)
+2. Connect the USB-C power supply
+3. The power LED should light up, and you'll see activity on the green LED
+
+### Step 6.2: Wait for First Boot
+
+- First boot takes 2-5 minutes (system expands filesystem and configures)
+- The Pi will reboot automatically once during this process
+- Wait until activity settles down
+
+### Step 6.3: Find the Hub on Your Network
+
+From your computer, try to connect:
+
+```bash
+# Try hostname first
+ping parcelguard-hub.local
+
+# If that doesn't work, find it by IP
+# On Mac/Linux:
+arp -a | grep -i raspberry
+
+# Or check your router's admin page for connected devices
+```
+
+### Step 6.4: SSH into the Hub
+
+```bash
+ssh pi@parcelguard-hub.local
+# Enter the password you set during flashing
+```
+
+If `parcelguard-hub.local` doesn't resolve, use the IP address:
+```bash
+ssh pi@192.168.1.xxx
+```
+
+### Step 6.5: Update the System
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+This may take 5-10 minutes. Let it complete.
+
+### Step 6.6: Install Required Packages
+
+```bash
+sudo apt install -y \
+  git \
+  curl \
+  nginx \
+  sqlite3 \
+  ffmpeg \
+  python3-pip
+```
+
+### Step 6.7: Install Node.js
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Verify
+node --version   # Should show v20.x.x
+npm --version
+```
+
+### Step 6.8: Mount the SSD
+
+```bash
+# Check the SSD is detected
+lsblk
+
+# You should see something like:
+# sda      8:0    0 238.5G  0 disk
+# └─sda1   8:1    0 238.5G  0 part
+
+# If sda1 doesn't exist, create a partition:
+sudo fdisk /dev/sda
+# Type: n (new), p (primary), 1, Enter, Enter, w (write)
+
+# Format the SSD
+sudo mkfs.ext4 /dev/sda1
+
+# Create mount point
+sudo mkdir -p /mnt/ssd
+
+# Get the UUID
+sudo blkid /dev/sda1
+# Note the UUID value (looks like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+
+# Add to fstab (replace YOUR-UUID-HERE with actual UUID)
+echo "UUID=YOUR-UUID-HERE /mnt/ssd ext4 defaults,noatime 0 2" | sudo tee -a /etc/fstab
+
+# Mount it
+sudo mount -a
+
+# Set ownership
+sudo chown -R pi:pi /mnt/ssd
+
+# Create directories
+mkdir -p /mnt/ssd/parcelguard/{data,clips,thumbnails,logs,backups}
+
+# Verify
+df -h /mnt/ssd
+```
+
+### Step 6.9: Clone ParcelGuard
+
+```bash
+cd /home/pi
+git clone https://github.com/yourusername/parcelguard.git
+cd parcelguard
+
+# Install dependencies
+npm install
+
+# Build shared package
+npm run build -w packages/shared
+
+# Build API
+npm run build -w apps/api
+
+# Build Web
+npm run build -w apps/web
+```
+
+### Step 6.10: Continue with DEPLOYMENT_SPEC.md
+
+For the remaining hub configuration (systemd services, Nginx, Frigate, Cloudflare Tunnel), follow the detailed instructions in [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md) starting from section **"1.5 Configure Services"**.
+
+---
+
+## 7. First Boot - Cameras
+
+Complete these steps for each camera unit.
+
+### Step 7.1: Insert SD Card and Power On
+
+1. Insert the appropriate SD card (CAM1 or CAM2)
+2. Connect the USB power bank via the micro USB **power** port (not the data port)
+   - The power port is typically labeled "PWR" or has a power symbol
+3. Wait 2-3 minutes for first boot
+
+### Step 7.2: SSH into the Camera
+
+```bash
+# For Camera 1
+ssh pi@parcelguard-cam1.local
+
+# For Camera 2
+ssh pi@parcelguard-cam2.local
+```
+
+### Step 7.3: Update and Enable Camera
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Enable the camera interface
+sudo raspi-config nonint do_camera 0
+
+# Reboot to apply
+sudo reboot
+```
+
+### Step 7.4: Test the Camera
+
+After reboot, SSH back in and test:
+
+```bash
+# Check camera is detected
+libcamera-hello --list-cameras
+
+# You should see output like:
+# Available cameras
+# -----------------
+# 0 : ov5647 [2592x1944] (/base/soc/i2c0mux/i2c@1/ov5647@36)
+
+# Take a test photo
+libcamera-still -o test.jpg
+
+# If this works, your camera is connected correctly!
+```
+
+### Step 7.5: Install Streaming Software
+
+```bash
+# Install required packages
+sudo apt install -y libcamera-tools v4l-utils
+
+# Download mediamtx (RTSP server)
+wget https://github.com/bluenviron/mediamtx/releases/download/v1.5.1/mediamtx_v1.5.1_linux_arm64v8.tar.gz
+tar -xzf mediamtx_v1.5.1_linux_arm64v8.tar.gz
+sudo mv mediamtx /usr/local/bin/
+sudo mv mediamtx.yml /etc/
+```
+
+### Step 7.6: Continue with DEPLOYMENT_SPEC.md
+
+For streaming configuration and systemd services, follow [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md) section **"Phase 2: Pi Zero Camera Setup"** from step 2.3 onwards.
+
+---
+
+## 8. Testing the System
+
+### Step 8.1: Test Camera Streams
+
+From the hub, test that you can see each camera:
+
+```bash
+# Test Camera 1
+ffprobe rtsp://parcelguard-cam1.local:8554/stream
+
+# Test Camera 2
+ffprobe rtsp://parcelguard-cam2.local:8554/stream
+```
+
+You should see stream information (resolution, codec, etc.) if working.
+
+### Step 8.2: Test the Web Interface
+
+1. On your phone or computer, open a browser
+2. Navigate to: `http://parcelguard-hub.local`
+3. You should see the ParcelGuard interface
+
+### Step 8.3: Test Live View
+
+1. In the web interface, navigate to the Live View
+2. Verify each camera feed is visible
+3. Check for smooth playback (some delay is normal)
+
+### Step 8.4: Test Motion Detection
+
+1. Walk in front of a camera
+2. Check that an event is recorded
+3. Verify you can play back the recorded clip
+
+### Step 8.5: Test Remote Access (if configured)
+
+1. Disconnect your phone from WiFi (use mobile data)
+2. Navigate to your Cloudflare Tunnel URL
+3. Verify you can access the system remotely
+
+---
+
+## 9. Concealment Tips
+
+### Camera Placement
+
+- Position cameras to cover entry points and parcel drop areas
+- Ensure good lighting (cameras struggle in very dark conditions)
+- Avoid pointing directly at windows (backlight causes silhouettes)
+
+### Hiding Camera Units
+
+**Ideas for concealment:**
+- Inside a tissue box with small hole for lens
+- Behind a plant pot with lens peeking through
+- Inside a fake book on a shelf
+- Behind a decorative item with drilled hole
+- Inside an electrical junction box (non-functional)
+
+**Key requirements:**
+- Camera lens needs clear line of sight (even small obstructions blur image)
+- Hole should be just large enough for lens (3-5mm)
+- Ensure ventilation for the Pi Zero (it generates heat)
+- Keep power bank accessible for swapping/charging
+
+### Power Bank Management
+
+- Label power banks clearly (Camera 1 Primary, Camera 1 Backup, etc.)
+- Set a schedule to swap batteries (e.g., every 2 days)
+- Keep a charging station with backup banks ready
+- Consider a small UPS for the hub if power is unreliable
+
+---
+
+## 10. Troubleshooting
+
+### Pi Won't Boot
+
+**Symptoms:** No activity LEDs, or constant blinking
+
+**Solutions:**
+1. Re-flash the SD card
+2. Try a different SD card
+3. Check power supply is adequate (Pi 4 needs 3A)
+4. For Pi Zero, ensure using the correct USB port for power
+
+### Can't Find Pi on Network
+
+**Solutions:**
+1. Wait longer (first boot can take 5+ minutes)
+2. Check WiFi credentials were entered correctly
+3. Connect Pi to monitor/TV to see boot messages
+4. Try Ethernet connection for hub (temporarily)
+5. Check your router for connected devices
+
+### Camera Not Detected
+
+**Symptoms:** `libcamera-hello --list-cameras` shows no cameras
+
+**Solutions:**
+1. Check ribbon cable is fully inserted at both ends
+2. Verify cable is the correct type (Zero adapter cable)
+3. Check cable isn't twisted or damaged
+4. Ensure camera interface is enabled: `sudo raspi-config` → Interface Options → Camera
+5. Reboot after enabling camera
+
+### Camera Stream Won't Start
+
+**Solutions:**
+1. Test camera with `libcamera-still -o test.jpg`
+2. Check mediamtx is running: `systemctl status mediamtx`
+3. Check for port conflicts: `netstat -tlnp | grep 8554`
+4. Review logs: `journalctl -u parcelguard-camera -f`
+
+### Hub Can't Connect to Camera Stream
+
+**Solutions:**
+1. Verify camera IP: `ping parcelguard-cam1.local`
+2. Test stream locally on camera first
+3. Check firewall isn't blocking port 8554
+4. Verify both devices are on same network
+
+### High CPU Temperature
+
+**Symptoms:** Pi is throttling, sluggish performance
+
+**Solutions:**
+1. Ensure thermal pads are properly applied
+2. Check Argon case fan is spinning
+3. Improve ventilation around the device
+4. Reduce stream quality if needed (lower resolution)
+
+### SSD Not Detected
+
+**Solutions:**
+1. Verify it's a SATA SSD (not NVMe)
+2. Check M.2 is fully seated in slot
+3. Try reseating the SSD
+4. Test SSD in another computer if possible
+
+---
+
+## Quick Reference
+
+### Default Hostnames
+
+| Device | Hostname | Default User |
+|--------|----------|--------------|
+| Hub | `parcelguard-hub.local` | pi |
+| Camera 1 | `parcelguard-cam1.local` | pi |
+| Camera 2 | `parcelguard-cam2.local` | pi |
+
+### Important Ports
+
+| Port | Service |
+|------|---------|
+| 22 | SSH |
+| 80 | Web interface (Nginx) |
+| 3000 | API server |
+| 5000 | Frigate |
+| 8554 | Camera RTSP streams |
+
+### Useful Commands
+
+```bash
+# Check service status
+sudo systemctl status parcelguard-api
+sudo systemctl status nginx
+
+# View logs
+journalctl -u parcelguard-api -f
+
+# Check disk space
+df -h
+
+# Check temperature
+vcgencmd measure_temp
+
+# Restart a service
+sudo systemctl restart parcelguard-api
+```
+
+---
+
+## Next Steps
+
+Once your system is assembled and running:
+
+1. Set up static IP addresses (see DEPLOYMENT_SPEC.md Appendix)
+2. Configure Cloudflare Tunnel for remote access
+3. Set up automated backups
+4. Fine-tune motion detection zones in Frigate
+
+For detailed configuration, refer to [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md).
+
+---
+
+*Last Updated: December 2024*
