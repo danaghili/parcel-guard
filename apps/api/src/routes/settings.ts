@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify'
 import { requireAuth } from '../middleware/auth'
 import { getSettings, updateSettings, updatePin, Settings } from '../services/settings'
+import { getNotificationStatus } from '../services/notifications'
+import { sendTestNotification, getNtfyConfig } from '../services/ntfy'
 import { ApiError } from '../lib/errors'
 
 interface UpdatePinBody {
@@ -62,4 +64,41 @@ export const settingsRoutes: FastifyPluginAsync = async (
       }
     },
   )
+
+  // Get notification status
+  server.get('/notifications/status', { preHandler: requireAuth }, async (_request, reply) => {
+    const status = getNotificationStatus()
+    return reply.send({
+      success: true,
+      data: status,
+    })
+  })
+
+  // Send test notification
+  server.post('/notifications/test', { preHandler: requireAuth }, async (_request, reply) => {
+    const config = getNtfyConfig()
+
+    if (!config) {
+      return reply.status(400).send({
+        success: false,
+        error: 'NOT_CONFIGURED',
+        message: 'Notifications not configured. Set NTFY_TOPIC environment variable.',
+      })
+    }
+
+    try {
+      await sendTestNotification(config.topic)
+      return reply.send({
+        success: true,
+        message: 'Test notification sent successfully',
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      return reply.status(500).send({
+        success: false,
+        error: 'NOTIFICATION_FAILED',
+        message: errorMessage,
+      })
+    }
+  })
 }

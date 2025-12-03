@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2024-12-03
+
+### Added
+- Notifications System (Phase 5)
+  - ntfy.sh integration for push notifications
+    - `apps/api/src/services/ntfy.ts` - HTTP client for ntfy.sh
+    - Support for self-hosted ntfy servers via `NTFY_SERVER` env var
+    - Thumbnail attachments via ntfy attachment API
+    - Deep links to event detail pages
+  - Notification service with smart delivery
+    - `apps/api/src/services/notifications.ts` - Core notification logic
+    - Quiet hours support (handles overnight periods like 22:00-07:00)
+    - Per-camera cooldown tracking to prevent spam
+    - Global and per-camera enable/disable
+  - Notification API endpoints:
+    - `GET /api/notifications/status` - Get notification configuration status
+    - `POST /api/notifications/test` - Send test notification
+  - Notification settings UI
+    - `apps/web/src/components/settings/NotificationSettings.tsx` - Full settings modal
+    - Enable/disable global notifications toggle
+    - Quiet hours configuration with time pickers
+    - Cooldown period slider (30s - 5min)
+    - Per-camera notification toggles
+    - Test notification button
+    - ntfy configuration status display
+  - Frontend API client updates
+    - `camerasApi.update()` for updating camera notification settings
+    - `settingsApi.getNotificationStatus()` for notification status
+    - `settingsApi.testNotification()` for sending test notifications
+  - Environment configuration
+    - `NTFY_TOPIC` - ntfy.sh topic name (required for notifications)
+    - `NTFY_SERVER` - ntfy server URL (optional, defaults to https://ntfy.sh)
+    - `APP_URL` - Base URL for deep links in notifications
+    - `API_URL` - Base URL for thumbnail attachments
+  - Unit tests for notification service (29 tests)
+  - E2E tests for notification settings (15 tests)
+
+### Changed
+- Updated Settings page to integrate notification settings modal
+- Updated app version display to v0.5.0 / Phase 5
+
+## [0.5.0] - 2024-12-03
+
+### Added
+- Event Timeline & Playback (Phase 4)
+  - `EventCard` component with thumbnail, camera name, timestamp, badges
+  - `EventList` component with infinite scroll pagination
+  - `EventFilters` component with camera, date range, importance filters
+  - `EventVideoPlayer` component with full playback controls
+  - `EventDetail` page with video player and event actions
+  - `EventStats` component showing today's count, important, false alarms
+  - `/events` page with event list and filtering
+  - `/events/:id` page for single event detail view
+  - Dashboard integration with recent events and quick stats
+  - Event actions: mark important, mark false alarm, delete, download
+  - Filter state persistence in URL query parameters
+  - Playback speed control (0.5x, 1x, 1.5x, 2x)
+  - Fullscreen video toggle
+  - Delete confirmation modal
+  - Unit tests for event components (20 tests)
+  - E2E tests for event browsing and playback (14 tests)
+
 ## [0.4.0] - 2024-12-03
 
 ### Added

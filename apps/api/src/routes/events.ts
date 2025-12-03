@@ -9,6 +9,8 @@ import {
   getEvents,
   getEventStats,
 } from '../services/events'
+import { getCameraById } from '../services/cameras'
+import { sendMotionAlert } from '../services/notifications'
 import { ApiError } from '../lib/errors'
 import { parseFrigateEvent } from '@parcelguard/shared'
 import type { FrigateEventPayload, EventFilters } from '@parcelguard/shared'
@@ -88,6 +90,33 @@ export const eventsRoutes: FastifyPluginAsync = async (
               ? `${frigateEvent.cameraId}/${frigateEvent.eventId}.mp4`
               : null,
           })
+
+          // Trigger notification (non-blocking)
+          const camera = getCameraById(frigateEvent.cameraId)
+          if (camera) {
+            sendMotionAlert(
+              {
+                id: event.id,
+                cameraId: event.cameraId,
+                timestamp: event.timestamp,
+                thumbnailPath: event.thumbnailPath,
+              },
+              camera,
+            )
+              .then((result) => {
+                if (result.sent) {
+                  server.log.info({ eventId: event.id, camera: camera.name }, 'Notification sent')
+                } else {
+                  server.log.debug(
+                    { eventId: event.id, reason: result.reason },
+                    'Notification not sent',
+                  )
+                }
+              })
+              .catch((err) => {
+                server.log.error({ eventId: event.id, error: err }, 'Notification failed')
+              })
+          }
 
           return reply.status(201).send({
             success: true,

@@ -125,6 +125,14 @@ export const camerasApi = {
     const response = await api.get<{ success: true; data: Camera }>(`/api/cameras/${id}`)
     return response.data
   },
+
+  update: async (
+    id: string,
+    data: { name?: string; streamUrl?: string; notificationsEnabled?: boolean },
+  ): Promise<Camera> => {
+    const response = await api.put<{ success: true; data: Camera }>(`/api/cameras/${id}`, data)
+    return response.data
+  },
 }
 
 // System API
@@ -153,6 +161,89 @@ export const settingsApi = {
   update: async (settings: Partial<Settings>): Promise<Settings> => {
     const response = await api.put<{ success: true; data: Settings }>('/api/settings', settings)
     return response.data
+  },
+
+  getNotificationStatus: async (): Promise<NotificationStatus> => {
+    const response = await api.get<{ success: true; data: NotificationStatus }>(
+      '/api/notifications/status',
+    )
+    return response.data
+  },
+
+  testNotification: async (): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post<{ success: boolean; message: string }>(
+      '/api/notifications/test',
+      {},
+    )
+    return response
+  },
+}
+
+// Events API
+export const eventsApi = {
+  list: async (
+    filters: EventFilters = {},
+    page = 1,
+    pageSize = 20,
+  ): Promise<PaginatedEvents> => {
+    const params = new URLSearchParams()
+    if (filters.cameraId) params.set('cameraId', filters.cameraId)
+    if (filters.startDate) params.set('startDate', filters.startDate.toString())
+    if (filters.endDate) params.set('endDate', filters.endDate.toString())
+    if (filters.startTime) params.set('startTime', filters.startTime)
+    if (filters.endTime) params.set('endTime', filters.endTime)
+    if (filters.isImportant !== undefined) params.set('isImportant', filters.isImportant.toString())
+    if (filters.isFalseAlarm !== undefined) params.set('isFalseAlarm', filters.isFalseAlarm.toString())
+    params.set('page', page.toString())
+    params.set('pageSize', pageSize.toString())
+
+    const response = await api.get<{ success: true; data: PaginatedEvents }>(
+      `/api/events?${params.toString()}`,
+    )
+    return response.data
+  },
+
+  get: async (id: string): Promise<MotionEvent> => {
+    const response = await api.get<{ success: true; data: MotionEvent }>(`/api/events/${id}`)
+    return response.data
+  },
+
+  getStats: async (): Promise<EventStats> => {
+    const response = await api.get<{ success: true; data: EventStats }>('/api/events/stats')
+    return response.data
+  },
+
+  update: async (
+    id: string,
+    data: { isImportant?: boolean; isFalseAlarm?: boolean },
+  ): Promise<MotionEvent> => {
+    const response = await api.put<{ success: true; data: MotionEvent }>(`/api/events/${id}`, data)
+    return response.data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/events/${id}`)
+  },
+
+  bulkDelete: async (ids: string[]): Promise<{ deletedCount: number }> => {
+    const response = await api.post<{ success: true; data: { deletedCount: number } }>(
+      '/api/events/bulk-delete',
+      { ids },
+    )
+    return response.data
+  },
+
+  // URL builders for media (use token in URL for authenticated requests)
+  getThumbnailUrl: (id: string): string => {
+    return `${API_BASE}/api/events/${id}/thumbnail`
+  },
+
+  getVideoUrl: (id: string): string => {
+    return `${API_BASE}/api/events/${id}/video`
+  },
+
+  getDownloadUrl: (id: string): string => {
+    return `${API_BASE}/api/events/${id}/download`
   },
 }
 
@@ -188,7 +279,7 @@ interface SystemStatus {
   }
 }
 
-interface Settings {
+export interface Settings {
   retentionDays: number
   theme: 'light' | 'dark' | 'system'
   notificationsEnabled: boolean
@@ -196,4 +287,49 @@ interface Settings {
   quietHoursStart: string
   quietHoursEnd: string
   notificationCooldown: number
+}
+
+export interface NotificationStatus {
+  configured: boolean
+  enabled: boolean
+  quietHoursActive: boolean
+  topic: string | null
+}
+
+// Event types
+export interface MotionEvent {
+  id: string
+  cameraId: string
+  timestamp: number
+  duration: number | null
+  thumbnailPath: string | null
+  videoPath: string | null
+  isImportant: boolean
+  isFalseAlarm: boolean
+  createdAt: number
+}
+
+export interface EventFilters {
+  cameraId?: string
+  startDate?: number
+  endDate?: number
+  startTime?: string
+  endTime?: string
+  isImportant?: boolean
+  isFalseAlarm?: boolean
+}
+
+export interface PaginatedEvents {
+  events: MotionEvent[]
+  total: number
+  page: number
+  pageSize: number
+  hasMore: boolean
+}
+
+export interface EventStats {
+  total: number
+  today: number
+  important: number
+  falseAlarms: number
 }

@@ -7,6 +7,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Live } from '@/pages/Live'
 import { Camera } from '@/pages/Camera'
 import { Events } from '@/pages/Events'
+import { EventDetail } from '@/pages/EventDetail'
 import { Settings } from '@/pages/Settings'
 
 function App(): JSX.Element {
@@ -28,6 +29,7 @@ function App(): JSX.Element {
           <Route path="/live" element={<Live />} />
           <Route path="/live/:cameraId" element={<Camera />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

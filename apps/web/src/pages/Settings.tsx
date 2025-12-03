@@ -1,7 +1,11 @@
+import { useState } from 'react'
+
 import { useAuth } from '@/hooks/useAuth'
+import { NotificationSettings } from '@/components/settings/NotificationSettings'
 
 export function Settings(): JSX.Element {
   const { logout } = useAuth()
+  const [showNotifications, setShowNotifications] = useState(false)
 
   const handleLogout = async (): Promise<void> => {
     await logout()
@@ -45,14 +49,21 @@ export function Settings(): JSX.Element {
               <span className="text-slate-500 text-sm">Phase 3</span>
             </button>
             <button
+              onClick={() => setShowNotifications(true)}
               className="w-full p-4 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors"
-              disabled
             >
               <span>Notifications</span>
-              <span className="text-slate-500 text-sm">Phase 5</span>
+              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         </section>
+
+        {/* Notification Settings Modal */}
+        {showNotifications && (
+          <NotificationSettings onClose={() => setShowNotifications(false)} />
+        )}
 
         {/* Logout */}
         <section className="pt-4">
@@ -67,8 +78,8 @@ export function Settings(): JSX.Element {
         {/* App info */}
         <section className="pt-4">
           <div className="text-center text-sm text-slate-500">
-            <p>ParcelGuard v0.1.0</p>
-            <p className="mt-1">Phase 1: Core Infrastructure</p>
+            <p>ParcelGuard v0.5.0</p>
+            <p className="mt-1">Phase 5: Notifications</p>
           </div>
         </section>
       </div>
