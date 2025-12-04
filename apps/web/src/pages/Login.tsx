@@ -24,7 +24,7 @@ export function Login(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
+    <main className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-900">
       <div className="w-full max-w-sm">
         {/* Logo/Title */}
         <div className="text-center mb-12">
@@ -66,10 +66,10 @@ export function Login(): JSX.Element {
         </div>
 
         {/* Help text */}
-        <p className="text-center text-sm text-slate-500">
-          Default PIN: <span className="text-slate-400 font-mono">1234</span>
+        <p className="text-center text-sm text-slate-400">
+          Default PIN: <span className="text-slate-300 font-mono">1234</span>
         </p>
       </div>
-    </div>
+    </main>
   )
 }
