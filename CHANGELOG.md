@@ -44,7 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `apps/web/src/hooks/useKeyboardShortcuts.ts` - Global keyboard navigation
     - 1/2/3/4 for quick navigation to main pages
     - Escape to go back, / to focus search
-  - Unit tests for Toast and Skeleton components
+  - Virtual Scrolling for Large Lists
+    - `apps/web/src/hooks/useVirtualScroll.ts` - IntersectionObserver-based virtualization
+    - Optimizes EventList for >50 items by replacing off-screen cards with placeholders
+    - Reduces DOM complexity while maintaining scroll position
+  - Unit tests for Toast, Skeleton, and VirtualScroll components (95 total)
   - Fixed pre-existing test type errors
 
 ### Changed

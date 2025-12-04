@@ -1,7 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useMemo } from 'react'
 import { EventCard } from './EventCard'
 import { EventListSkeleton } from './EventCardSkeleton'
 import { Spinner } from '../ui/Spinner'
+import { useVirtualScroll } from '@/hooks/useVirtualScroll'
 import type { MotionEvent, Camera } from '../../lib/api'
 
 interface EventListProps {
@@ -12,6 +13,12 @@ interface EventListProps {
   onLoadMore: () => void
   className?: string
 }
+
+// Threshold for enabling virtual scrolling (number of items)
+const VIRTUALIZATION_THRESHOLD = 50
+
+// Approximate card height for placeholder sizing
+const CARD_HEIGHT_ESTIMATE = 220
 
 export function EventList({
   events,
@@ -24,11 +31,19 @@ export function EventList({
   const observerTarget = useRef<HTMLDivElement>(null)
 
   // Create a map of cameras by ID for quick lookup
-  const cameraMap = useCallback(() => {
+  const camerasById = useMemo(() => {
     const map = new Map<string, Camera>()
     cameras.forEach((camera) => map.set(camera.id, camera))
     return map
   }, [cameras])
+
+  // Virtual scroll for large lists
+  const { isItemVisible, setItemRef, isVirtualized } = useVirtualScroll({
+    itemCount: events.length,
+    threshold: VIRTUALIZATION_THRESHOLD,
+    overscan: 6,
+    estimatedItemHeight: CARD_HEIGHT_ESTIMATE,
+  })
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -50,8 +65,6 @@ export function EventList({
       observer.disconnect()
     }
   }, [hasMore, loading, onLoadMore])
-
-  const camerasById = cameraMap()
 
   // Show skeleton on initial load (no events yet and loading)
   if (events.length === 0 && loading) {
@@ -88,13 +101,24 @@ export function EventList({
 
   return (
     <div className={className}>
+      {/* Virtual scroll info (dev only) */}
+      {isVirtualized && process.env.NODE_ENV === 'development' && (
+        <p className="text-xs text-slate-500 mb-2">
+          Virtual scrolling active ({events.length} items)
+        </p>
+      )}
+
       {/* Event grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {events.map((event) => (
-          <EventCard
+        {events.map((event, index) => (
+          <VirtualizedEventCard
             key={event.id}
             event={event}
             camera={camerasById.get(event.cameraId)}
+            index={index}
+            isVisible={isItemVisible(index)}
+            setRef={setItemRef(index)}
+            isVirtualized={isVirtualized}
           />
         ))}
       </div>
@@ -112,5 +136,56 @@ export function EventList({
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * Wrapper component that handles virtualization of individual event cards.
+ * Renders a placeholder when the card is not visible to reduce DOM complexity.
+ */
+interface VirtualizedEventCardProps {
+  event: MotionEvent
+  camera?: Camera
+  index: number
+  isVisible: boolean
+  setRef: (el: HTMLElement | null) => void
+  isVirtualized: boolean
+}
+
+function VirtualizedEventCard({
+  event,
+  camera,
+  index,
+  isVisible,
+  setRef,
+  isVirtualized,
+}: VirtualizedEventCardProps): JSX.Element {
+  const handleRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (isVirtualized && el) {
+        el.dataset.virtualIndex = String(index)
+        setRef(el)
+      }
+    },
+    [index, setRef, isVirtualized]
+  )
+
+  // When not virtualized or item is visible, render the full card
+  if (!isVirtualized || isVisible) {
+    return (
+      <div ref={handleRef}>
+        <EventCard event={event} camera={camera} />
+      </div>
+    )
+  }
+
+  // Render placeholder for off-screen items
+  return (
+    <div
+      ref={handleRef}
+      className="bg-slate-800 rounded-lg"
+      style={{ height: CARD_HEIGHT_ESTIMATE }}
+      aria-hidden="true"
+    />
   )
 }

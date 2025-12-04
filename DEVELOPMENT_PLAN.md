@@ -829,7 +829,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 
 #### 7A.1 Performance Optimisation
 - [x] Lazy load event thumbnails (intersection observer)
-- [ ] Virtual scrolling for event list (>100 items)
+- [x] Virtual scrolling for event list (>50 items)
 - [ ] Image optimisation (WebP thumbnails)
 - [ ] API response caching (short TTL)
 - [x] Code splitting for routes
