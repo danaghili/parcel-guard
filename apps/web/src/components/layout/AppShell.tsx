@@ -1,7 +1,11 @@
 import { Outlet } from 'react-router-dom'
 import { BottomNav } from './BottomNav'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export function AppShell(): JSX.Element {
+  // Enable keyboard navigation shortcuts
+  useKeyboardShortcuts()
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       {/* Skip to main content link for keyboard/screen reader users */}

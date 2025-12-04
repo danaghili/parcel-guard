@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CameraGrid } from '@/components/cameras/CameraGrid'
 import { CameraGridSkeleton } from '@/components/cameras/CameraCardSkeleton'
+import { PullToRefresh } from '@/components/ui/PullToRefresh'
 import { camerasApi, Camera } from '@/lib/api'
 
 export function Live(): JSX.Element {
@@ -11,8 +12,8 @@ export function Live(): JSX.Element {
   const fetchCameras = useCallback(async () => {
     try {
       setError(null)
-      const cameras = await camerasApi.list()
-      setCameras(cameras)
+      const cameraList = await camerasApi.list()
+      setCameras(cameraList)
     } catch (err) {
       setError('Failed to load cameras')
       console.error('Failed to fetch cameras:', err)
@@ -25,12 +26,13 @@ export function Live(): JSX.Element {
     fetchCameras()
   }, [fetchCameras])
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(async (): Promise<void> => {
     setLoading(true)
-    fetchCameras()
-  }
+    await fetchCameras()
+  }, [fetchCameras])
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} className="h-full">
     <div className="p-4">
       <header className="mb-4 flex items-center justify-between">
         <div>
@@ -77,5 +79,6 @@ export function Live(): JSX.Element {
         <CameraGrid cameras={cameras} />
       )}
     </div>
+    </PullToRefresh>
   )
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { EventList } from '../components/events/EventList'
 import { EventFilters } from '../components/events/EventFilters'
 import { EventStats } from '../components/events/EventStats'
+import { PullToRefresh } from '../components/ui/PullToRefresh'
 import {
   eventsApi,
   camerasApi,
@@ -150,7 +151,23 @@ export function Events(): JSX.Element {
     }
   }, [loading, hasMore, page, fetchEvents])
 
+  // Handle pull-to-refresh
+  const handleRefresh = useCallback(async (): Promise<void> => {
+    setPage(1)
+    setEvents([])
+    setHasMore(true)
+    await fetchEvents(1, false)
+    // Also refresh stats
+    try {
+      const statsData = await eventsApi.getStats()
+      setStats(statsData)
+    } catch (err) {
+      console.error('Failed to refresh stats:', err)
+    }
+  }, [fetchEvents])
+
   return (
+    <PullToRefresh onRefresh={handleRefresh} className="h-full">
     <div className="p-4 max-w-7xl mx-auto">
       {/* Header */}
       <header className="mb-6">
@@ -191,5 +208,6 @@ export function Events(): JSX.Element {
         onLoadMore={handleLoadMore}
       />
     </div>
+    </PullToRefresh>
   )
 }

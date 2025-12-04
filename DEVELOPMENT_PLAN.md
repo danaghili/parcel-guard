@@ -828,39 +828,39 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 ### Tasks
 
 #### 7A.1 Performance Optimisation
-- [ ] Lazy load event thumbnails (intersection observer)
+- [x] Lazy load event thumbnails (intersection observer)
 - [ ] Virtual scrolling for event list (>100 items)
 - [ ] Image optimisation (WebP thumbnails)
 - [ ] API response caching (short TTL)
-- [ ] Code splitting for routes
+- [x] Code splitting for routes
 
 #### 7A.2 PWA Enhancements
 - [ ] Offline mode - view cached events
 - [ ] Background sync for actions taken offline
-- [ ] Install prompt (beforeinstallprompt)
-- [ ] App icon and splash screen
-- [ ] iOS standalone mode support
+- [x] Install prompt (beforeinstallprompt)
+- [x] App icon and splash screen
+- [x] iOS standalone mode support
 
 #### 7A.3 UX Improvements
 - [ ] Onboarding flow for first-time setup
-- [ ] Empty states with helpful prompts
-- [ ] Loading skeletons for all async content
-- [ ] Toast notifications for actions
-- [ ] Pull-to-refresh on all lists
-- [ ] Keyboard shortcuts (desktop)
+- [x] Empty states with helpful prompts
+- [x] Loading skeletons for all async content
+- [x] Toast notifications for actions
+- [x] Pull-to-refresh on all lists
+- [x] Keyboard shortcuts (desktop)
 
 #### 7A.4 Error Handling Polish
-- [ ] Friendly error messages (no stack traces)
-- [ ] Retry buttons for failed operations
-- [ ] Network status indicator
+- [x] Friendly error messages (no stack traces)
+- [x] Retry buttons for failed operations
+- [x] Network status indicator
 - [ ] Auto-retry for transient failures
 
 #### 7A.5 Accessibility
-- [ ] Keyboard navigation
-- [ ] Screen reader labels
-- [ ] Focus management
-- [ ] Colour contrast compliance
-- [ ] Reduced motion support
+- [x] Keyboard navigation
+- [x] Screen reader labels
+- [x] Focus management
+- [x] Colour contrast compliance
+- [x] Reduced motion support
 
 #### 7A.6 Pre-Hardware Testing
 - [ ] Full regression test suite

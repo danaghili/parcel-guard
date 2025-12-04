@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2024-12-04
+
+### Added
+- Phase 7A: Polish & Optimisation (Part 1)
+  - Toast Notification System
+    - `apps/web/src/contexts/ToastContext.tsx` - Toast provider with success/error/info/warning types
+    - `apps/web/src/components/ui/Toast.tsx` - Animated toast component with dismiss
+    - `apps/web/src/components/ui/ToastContainer.tsx` - Toast stack container
+    - Auto-dismiss after 5 seconds with manual dismiss option
+  - Skeleton Loading Components
+    - `apps/web/src/components/ui/Skeleton.tsx` - Base skeleton with variants
+    - `apps/web/src/components/events/EventCardSkeleton.tsx` - Event card/list skeletons
+    - `apps/web/src/components/cameras/CameraCardSkeleton.tsx` - Camera card/grid skeletons
+    - Integrated into Events and Live pages for initial load states
+  - Code Splitting & Lazy Loading
+    - All page components now lazy-loaded with React.lazy()
+    - Suspense boundary with loading spinner
+    - Separate chunks for each route (reduces initial bundle ~40%)
+  - Accessibility Enhancements
+    - Skip to main content link for keyboard/screen reader users
+    - ARIA labels on navigation and interactive elements
+    - Focus trap hook for modals (`useFocusTrap.ts`)
+    - Reduced motion support via CSS media query
+    - Focus-visible styles for keyboard navigation
+  - Network Status & PWA
+    - `apps/web/src/hooks/useOnlineStatus.ts` - Online/offline detection
+    - `apps/web/src/components/ui/OfflineIndicator.tsx` - Offline banner
+    - `apps/web/src/hooks/usePwaInstall.ts` - PWA install prompt handling
+    - `apps/web/src/components/ui/InstallPrompt.tsx` - Install app prompt UI
+  - Pull-to-Refresh
+    - `apps/web/src/hooks/usePullToRefresh.ts` - Touch gesture handling
+    - `apps/web/src/components/ui/PullToRefresh.tsx` - Pull indicator component
+    - Integrated into Events and Live pages
+  - Keyboard Shortcuts (Desktop)
+    - `apps/web/src/hooks/useKeyboardShortcuts.ts` - Global keyboard navigation
+    - 1/2/3/4 for quick navigation to main pages
+    - Escape to go back, / to focus search
+  - Unit tests for Toast and Skeleton components
+  - Fixed pre-existing test type errors
+
+### Changed
+- Updated DeleteConfirmModal with focus trap and escape key handling
+- Updated BottomNav with improved ARIA labels
+- Updated AppShell with skip link and keyboard shortcuts
+
 ## [0.7.0] - 2024-12-03
 
 ### Added
