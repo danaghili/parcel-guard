@@ -64,6 +64,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Cache-first strategy for thumbnails (7-day retention)
   - Unit tests for Toast, Skeleton, and VirtualScroll components (95 total)
   - Fixed pre-existing test type errors
+  - User Documentation
+    - `docs/USER_GUIDE.md` - Comprehensive user guide covering all app features
+    - `docs/TROUBLESHOOTING.md` - Troubleshooting guide for common issues
 
 ### Changed
 - Updated DeleteConfirmModal with focus trap and escape key handling

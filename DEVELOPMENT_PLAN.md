@@ -870,8 +870,8 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [ ] Security audit - application layer
 
 #### 7A.7 Documentation
-- [ ] User guide (README)
-- [ ] Troubleshooting guide
+- [x] User guide (docs/USER_GUIDE.md)
+- [x] Troubleshooting guide (docs/TROUBLESHOOTING.md)
 - [ ] API documentation (OpenAPI spec)
 - [ ] Contribution guidelines
 
