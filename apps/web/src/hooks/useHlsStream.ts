@@ -1,7 +1,16 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
-import Hls from 'hls.js'
+import type Hls from 'hls.js'
 
 export type StreamStatus = 'idle' | 'loading' | 'playing' | 'error' | 'offline'
+
+// Lazy load HLS.js to reduce initial bundle size
+let HlsModule: typeof import('hls.js') | null = null
+const loadHls = async (): Promise<typeof import('hls.js')> => {
+  if (!HlsModule) {
+    HlsModule = await import('hls.js')
+  }
+  return HlsModule
+}
 
 export interface UseHlsStreamOptions {
   autoPlay?: boolean
@@ -96,7 +105,7 @@ export function useHlsStream(
     }, delay)
   }, [retryCount, opts.maxRetries, opts.initialRetryDelay, opts.maxRetryDelay])
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     const video = videoRef.current
     if (!video || !streamUrl) {
       setStatus('idle')
@@ -106,6 +115,10 @@ export function useHlsStream(
     cleanup()
     setStatus('loading')
     setError(null)
+
+    // Load HLS.js dynamically
+    const HlsLib = await loadHls()
+    const Hls = HlsLib.default
 
     // Check HLS.js support (most browsers)
     if (Hls.isSupported()) {

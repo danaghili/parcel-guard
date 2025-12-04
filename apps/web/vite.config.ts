@@ -115,6 +115,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // HLS.js is intentionally code-split and loaded on demand
+    chunkSizeWarningLimit: 600,
+  },
   server: {
     port: 5173,
     proxy: {

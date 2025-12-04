@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - All page components now lazy-loaded with React.lazy()
     - Suspense boundary with loading spinner
     - Separate chunks for each route (reduces initial bundle ~40%)
+    - HLS.js lazy loaded on-demand (523KB only loaded when viewing streams)
   - Accessibility Enhancements
     - Skip to main content link for keyboard/screen reader users
     - ARIA labels on navigation and interactive elements
