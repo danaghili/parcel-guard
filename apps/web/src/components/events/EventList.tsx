@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { EventCard } from './EventCard'
+import { EventListSkeleton } from './EventCardSkeleton'
 import { Spinner } from '../ui/Spinner'
 import type { MotionEvent, Camera } from '../../lib/api'
 
@@ -51,6 +52,15 @@ export function EventList({
   }, [hasMore, loading, onLoadMore])
 
   const camerasById = cameraMap()
+
+  // Show skeleton on initial load (no events yet and loading)
+  if (events.length === 0 && loading) {
+    return (
+      <div className={className}>
+        <EventListSkeleton count={6} />
+      </div>
+    )
+  }
 
   if (events.length === 0 && !loading) {
     return (

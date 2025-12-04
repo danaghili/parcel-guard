@@ -73,19 +73,24 @@ const navItems: NavItem[] = [
 
 export function BottomNav(): JSX.Element {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 safe-bottom">
+    <nav
+      className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 safe-bottom"
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="flex justify-around items-center h-16">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
+            aria-label={item.label}
             className={({ isActive }) => `
               flex flex-col items-center justify-center gap-1 px-4 py-2
-              transition-colors
+              transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 rounded-lg
               ${isActive ? 'text-primary-400' : 'text-slate-400 hover:text-slate-200'}
             `}
           >
-            {item.icon}
+            <span aria-hidden="true">{item.icon}</span>
             <span className="text-xs">{item.label}</span>
           </NavLink>
         ))}

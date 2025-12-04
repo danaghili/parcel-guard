@@ -60,9 +60,9 @@ describe('PinChangeModal', () => {
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
     const inputs = screen.getAllByPlaceholderText('••••')
-    fireEvent.change(inputs[0], { target: { value: '1234' } })
-    fireEvent.change(inputs[1], { target: { value: '5678' } })
-    fireEvent.change(inputs[2], { target: { value: '9999' } })
+    fireEvent.change(inputs[0]!, { target: { value: '1234' } })
+    fireEvent.change(inputs[1]!, { target: { value: '5678' } })
+    fireEvent.change(inputs[2]!, { target: { value: '9999' } })
 
     fireEvent.click(screen.getByRole('button', { name: /change pin/i }))
 
@@ -75,9 +75,9 @@ describe('PinChangeModal', () => {
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
     const inputs = screen.getAllByPlaceholderText('••••')
-    fireEvent.change(inputs[0], { target: { value: '1234' } })
-    fireEvent.change(inputs[1], { target: { value: '1234' } })
-    fireEvent.change(inputs[2], { target: { value: '1234' } })
+    fireEvent.change(inputs[0]!, { target: { value: '1234' } })
+    fireEvent.change(inputs[1]!, { target: { value: '1234' } })
+    fireEvent.change(inputs[2]!, { target: { value: '1234' } })
 
     fireEvent.click(screen.getByRole('button', { name: /change pin/i }))
 
@@ -90,9 +90,9 @@ describe('PinChangeModal', () => {
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
     const inputs = screen.getAllByPlaceholderText('••••')
-    fireEvent.change(inputs[0], { target: { value: '12' } }) // Too short
-    fireEvent.change(inputs[1], { target: { value: '5678' } })
-    fireEvent.change(inputs[2], { target: { value: '5678' } })
+    fireEvent.change(inputs[0]!, { target: { value: '12' } }) // Too short
+    fireEvent.change(inputs[1]!, { target: { value: '5678' } })
+    fireEvent.change(inputs[2]!, { target: { value: '5678' } })
 
     fireEvent.click(screen.getByRole('button', { name: /change pin/i }))
 
@@ -107,9 +107,9 @@ describe('PinChangeModal', () => {
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
     const inputs = screen.getAllByPlaceholderText('••••')
-    fireEvent.change(inputs[0], { target: { value: '1234' } })
-    fireEvent.change(inputs[1], { target: { value: '5678' } })
-    fireEvent.change(inputs[2], { target: { value: '5678' } })
+    fireEvent.change(inputs[0]!, { target: { value: '1234' } })
+    fireEvent.change(inputs[1]!, { target: { value: '5678' } })
+    fireEvent.change(inputs[2]!, { target: { value: '5678' } })
 
     fireEvent.click(screen.getByRole('button', { name: /change pin/i }))
 
@@ -129,10 +129,10 @@ describe('PinChangeModal', () => {
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
     const inputs = screen.getAllByPlaceholderText('••••')
-    fireEvent.change(inputs[0], { target: { value: 'abc123def' } })
+    fireEvent.change(inputs[0]!, { target: { value: 'abc123def' } })
 
     // The value should only contain digits
-    expect(inputs[0]).toHaveValue('123')
+    expect(inputs[0]!).toHaveValue('123')
   })
 })
 

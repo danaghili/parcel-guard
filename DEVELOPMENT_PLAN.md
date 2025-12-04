@@ -25,7 +25,8 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 5 | Notifications | Push alerts on motion | Phase 4 | ✅ Complete |
 | 6A | Settings & Administration (Pre-Hardware) | Camera management UI, system settings, health dashboard | Phase 5 | ✅ Complete |
 | 6B | Settings & Administration (Post-Hardware) | Motion zone editor, recording schedules, real system stats | Phase 6A + Hardware | ⬜ Not started |
-| 7 | Polish & Optimisation | Performance, UX, full PWA | Phase 6 | ⬜ Not started |
+| 7A | Polish & Optimisation (Pre-Hardware) | Performance, UX, PWA, accessibility | Phase 6A | ⬜ Not started |
+| 7B | Polish & Optimisation (Post-Hardware) | Real stream testing, final validation | Phase 7A + Hardware | ⬜ Not started |
 
 ---
 
@@ -809,27 +810,38 @@ Add hardware-dependent features: motion zone editor, recording schedules, real s
 
 ## Phase 7: Polish & Optimisation
 
+### Implementation Approach
+
+> **Note:** Phase 7 is split into two stages:
+> - **Stage A (Pre-Hardware):** Performance optimisation, PWA enhancements, UX improvements, accessibility, and documentation
+> - **Stage B (Post-Hardware):** Real stream testing, final validation with actual cameras, and production sign-off
+>
+> This allows development to continue before hardware arrives. Stage A delivers a polished, production-ready UI that Stage B validates with real hardware.
+
+---
+
+## Phase 7A: Polish & Optimisation (Pre-Hardware) ⬜
+
 ### Objective
-Performance improvements, UX refinements, and full PWA capabilities.
+Performance improvements, UX refinements, full PWA capabilities, and accessibility - all achievable without hardware.
 
 ### Tasks
 
-#### 7.1 Performance Optimisation
+#### 7A.1 Performance Optimisation
 - [ ] Lazy load event thumbnails (intersection observer)
 - [ ] Virtual scrolling for event list (>100 items)
 - [ ] Image optimisation (WebP thumbnails)
 - [ ] API response caching (short TTL)
-- [ ] Stream quality auto-adjustment based on network
 - [ ] Code splitting for routes
 
-#### 7.2 PWA Enhancements
+#### 7A.2 PWA Enhancements
 - [ ] Offline mode - view cached events
 - [ ] Background sync for actions taken offline
 - [ ] Install prompt (beforeinstallprompt)
 - [ ] App icon and splash screen
 - [ ] iOS standalone mode support
 
-#### 7.3 UX Improvements
+#### 7A.3 UX Improvements
 - [ ] Onboarding flow for first-time setup
 - [ ] Empty states with helpful prompts
 - [ ] Loading skeletons for all async content
@@ -837,27 +849,27 @@ Performance improvements, UX refinements, and full PWA capabilities.
 - [ ] Pull-to-refresh on all lists
 - [ ] Keyboard shortcuts (desktop)
 
-#### 7.4 Error Handling Polish
+#### 7A.4 Error Handling Polish
 - [ ] Friendly error messages (no stack traces)
 - [ ] Retry buttons for failed operations
 - [ ] Network status indicator
 - [ ] Auto-retry for transient failures
 
-#### 7.5 Accessibility
+#### 7A.5 Accessibility
 - [ ] Keyboard navigation
 - [ ] Screen reader labels
 - [ ] Focus management
 - [ ] Colour contrast compliance
 - [ ] Reduced motion support
 
-#### 7.6 Final Testing
+#### 7A.6 Pre-Hardware Testing
 - [ ] Full regression test suite
-- [ ] Cross-browser testing (Chrome, Safari, Firefox)
-- [ ] Mobile device testing (iOS, Android)
-- [ ] Performance audit (Lighthouse)
-- [ ] Security audit
+- [ ] Cross-browser testing (Chrome, Safari, Firefox) - UI only
+- [ ] Mobile device testing (iOS, Android) - UI only
+- [ ] Performance audit (Lighthouse) - mock streams
+- [ ] Security audit - application layer
 
-#### 7.7 Documentation
+#### 7A.7 Documentation
 - [ ] User guide (README)
 - [ ] Troubleshooting guide
 - [ ] API documentation (OpenAPI spec)
@@ -866,16 +878,87 @@ Performance improvements, UX refinements, and full PWA capabilities.
 ### Deliverables
 - Smooth, responsive application
 - Full PWA install experience
-- Offline capability
-- Production-ready quality
+- Offline capability for cached content
+- Accessible interface
+- Complete documentation
 
 ### Acceptance Criteria
-- [ ] Lighthouse performance score >90
+- [ ] Lighthouse performance score >90 (with mock streams)
 - [ ] Lighthouse PWA score 100
-- [ ] No console errors in production
+- [ ] Lighthouse accessibility score >90
+- [ ] No console errors in production build
 - [ ] Works offline for cached content
 - [ ] Installs as native app on mobile
-- [ ] All tests passing
+- [ ] All unit and E2E tests passing
+- [ ] Documentation complete
+
+### Tests Required
+**Unit:**
+- [ ] Virtual scroll component
+- [ ] Offline cache logic
+- [ ] Background sync queue
+- [ ] Toast notification system
+- [ ] Keyboard navigation hooks
+
+**E2E:**
+- [ ] Install PWA flow
+- [ ] Offline mode functionality
+- [ ] Keyboard navigation paths
+- [ ] Onboarding flow
+- [ ] Pull-to-refresh behaviour
+
+---
+
+## Phase 7B: Polish & Optimisation (Post-Hardware) ⬜
+
+### Objective
+Final validation with real camera hardware and production environment sign-off.
+
+### Tasks
+
+#### 7B.1 Real Stream Performance
+- [ ] Stream quality auto-adjustment based on network
+- [ ] Test stream reconnection under real conditions
+- [ ] Measure actual stream latency
+- [ ] Validate HLS segment caching
+
+#### 7B.2 Hardware Integration Testing
+- [ ] Cross-browser testing with real camera streams
+- [ ] Mobile device testing with real streams
+- [ ] Test on actual Pi 4 hub hardware
+- [ ] Validate CPU/memory usage under load
+
+#### 7B.3 Production Validation
+- [ ] Performance audit (Lighthouse) - real streams
+- [ ] Security audit - full system including hardware
+- [ ] Load testing with multiple simultaneous streams
+- [ ] Battery/power testing for Pi Zero cameras
+
+#### 7B.4 Final Sign-off
+- [ ] End-to-end user acceptance testing
+- [ ] Production deployment checklist
+- [ ] Monitoring and alerting setup
+- [ ] Backup and recovery verification
+
+### Deliverables
+- Production-validated system
+- Confirmed performance under real conditions
+- Complete security sign-off
+- Deployment-ready application
+
+### Acceptance Criteria
+- [ ] All streams stable for 24+ hours
+- [ ] Lighthouse performance score >90 with real streams
+- [ ] No memory leaks after extended operation
+- [ ] Security audit passed
+- [ ] All acceptance criteria from previous phases verified with hardware
+
+### Tests Required
+**Manual:**
+- [ ] 24-hour stability test
+- [ ] Network interruption recovery
+- [ ] Power failure recovery
+- [ ] Multi-user concurrent access
 
 ---
 
@@ -884,25 +967,25 @@ Performance improvements, UX refinements, and full PWA capabilities.
 ### Recommended Sequence
 
 ```
-                                              ┌─────────────────┐     ┌─────────────────┐
-                                              │  Phase 3B       │     │  Phase 6B       │
-                                              │  (Post-Hardware)│     │  (Post-Hardware)│
-                                              │  Frigate Config │     │  Motion Zones   │
-                                              └────────┬────────┘     └────────┬────────┘
-                                                       │                       │
-                                                       │ Hardware arrives      │
-                                                       │                       │
-Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4 ───► Phase 5 ───► Phase 6A ─┴──► Phase 7
-(Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)  (Notify)     (Pre-Hardware)   (Polish)
+                                              ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+                                              │  Phase 3B       │     │  Phase 6B       │     │  Phase 7B       │
+                                              │  (Post-Hardware)│     │  (Post-Hardware)│     │  (Post-Hardware)│
+                                              │  Frigate Config │     │  Motion Zones   │     │  Final Valid.   │
+                                              └────────┬────────┘     └────────┬────────┘     └────────┬────────┘
+                                                       │                       │                       │
+                                                       │ Hardware arrives      │                       │
+                                                       │                       │                       │
+Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4 ───► Phase 5 ───► Phase 6A ─┴──► Phase 7A ─┴──► Done
+(Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)  (Notify)     (Pre-Hardware)   (Pre-Hardware)
      ✅              ✅              ✅            ✅              ✅            ✅              ✅
-                                               Event API         Events List  ntfy.sh      Camera Mgmt UI
-                                               Storage Mgmt      Video Player Quiet Hours  System Settings
-                                                                              Cooldowns    Health Dashboard
+                                               Event API         Events List  ntfy.sh      Camera Mgmt UI   Performance
+                                               Storage Mgmt      Video Player Quiet Hours  System Settings  PWA/A11y
+                                                                              Cooldowns    Health Dashboard Documentation
 ```
 
 ### Hardware-Independent Development Path
 
-The system is designed so that **Phases 0-6A** can be developed without physical camera hardware:
+The system is designed so that **Phases 0-7A** can be developed without physical camera hardware:
 
 | Phase | Hardware Required? | Notes |
 |-------|-------------------|-------|
@@ -913,7 +996,8 @@ The system is designed so that **Phases 0-6A** can be developed without physical
 | 5 | No | ✅ Complete - ntfy.sh notifications with simulated events |
 | 6A | No | ✅ Complete - Camera management, settings, health dashboard |
 | 6B | **Yes** | Motion zone editor needs live preview, real CPU temp |
-| 7 | No | Polish and optimisation |
+| 7A | No | Performance, PWA, accessibility, documentation |
+| 7B | **Yes** | Real stream testing, hardware validation, production sign-off |
 
 ### Parallel Work Opportunities
 
@@ -951,4 +1035,4 @@ The system is designed so that **Phases 0-6A** can be developed without physical
 ---
 
 *Last Updated: December 2024*
-*Version: 1.4.0*
+*Version: 1.5.0*

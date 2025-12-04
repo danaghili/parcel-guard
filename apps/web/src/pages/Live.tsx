@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { CameraGrid } from '@/components/cameras/CameraGrid'
-import { Spinner } from '@/components/ui/Spinner'
+import { CameraGridSkeleton } from '@/components/cameras/CameraCardSkeleton'
 import { camerasApi, Camera } from '@/lib/api'
 
 export function Live(): JSX.Element {
@@ -62,9 +62,7 @@ export function Live(): JSX.Element {
       </header>
 
       {loading && cameras.length === 0 ? (
-        <div className="flex justify-center py-12">
-          <Spinner size="lg" />
-        </div>
+        <CameraGridSkeleton count={4} />
       ) : error ? (
         <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 text-center">
           <p className="text-red-400 mb-3">{error}</p>
