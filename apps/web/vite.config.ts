@@ -35,6 +35,79 @@ export default defineConfig({
           },
         ],
       },
+      workbox: {
+        // Cache app shell and static assets
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+
+        // Runtime caching strategies
+        runtimeCaching: [
+          {
+            // Cache API responses for events list (stale-while-revalidate)
+            urlPattern: /\/api\/events(\?.*)?$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'events-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache event thumbnails (cache first)
+            urlPattern: /\/api\/events\/[^/]+\/thumbnail$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'thumbnails-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache camera list (stale-while-revalidate)
+            urlPattern: /\/api\/cameras$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'cameras-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 5, // 5 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache settings (stale-while-revalidate)
+            urlPattern: /\/api\/settings$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'settings-cache',
+              expiration: {
+                maxEntries: 1,
+                maxAgeSeconds: 60 * 5, // 5 minutes
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Network-only for auth endpoints (never cache)
+            urlPattern: /\/api\/auth\//,
+            handler: 'NetworkOnly',
+          },
+        ],
+      },
     }),
   ],
   resolve: {

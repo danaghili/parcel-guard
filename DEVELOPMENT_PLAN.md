@@ -835,7 +835,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] Code splitting for routes
 
 #### 7A.2 PWA Enhancements
-- [ ] Offline mode - view cached events
+- [x] Offline mode - view cached events
 - [ ] Background sync for actions taken offline
 - [x] Install prompt (beforeinstallprompt)
 - [x] App icon and splash screen

@@ -55,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Notifications configuration step
     - Completion step with next steps guidance
     - `onboardingComplete` setting to track setup status
+  - Offline Mode & Caching
+    - Workbox runtime caching for API responses (events, thumbnails, cameras, settings)
+    - `apps/web/src/hooks/useOfflineData.ts` - Hook for offline-first data fetching
+    - `apps/web/src/components/ui/CachedDataBadge.tsx` - Visual indicator when showing cached data
+    - Dashboard now uses offline-first data fetching with localStorage fallback
+    - Stale-while-revalidate strategy for frequently changing data
+    - Cache-first strategy for thumbnails (7-day retention)
   - Unit tests for Toast, Skeleton, and VirtualScroll components (95 total)
   - Fixed pre-existing test type errors
 

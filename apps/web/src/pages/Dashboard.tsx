@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { systemApi, camerasApi, eventsApi, type MotionEvent, type EventStats } from '@/lib/api'
 import { Spinner } from '@/components/ui/Spinner'
+import { CachedDataBadge } from '@/components/ui/CachedDataBadge'
+import { useOfflineData } from '@/hooks/useOfflineData'
 
 interface Camera {
   id: string
@@ -24,6 +25,21 @@ interface DashboardData {
   eventStats: EventStats | null
 }
 
+async function fetchDashboardData(): Promise<DashboardData> {
+  const [cameras, systemStatus, eventsData, eventStats] = await Promise.all([
+    camerasApi.list(),
+    systemApi.status(),
+    eventsApi.list({}, 1, 5),
+    eventsApi.getStats(),
+  ])
+  return {
+    cameras,
+    systemStatus,
+    recentEvents: eventsData.events,
+    eventStats,
+  }
+}
+
 /**
  * Format timestamp for recent events display
  */
@@ -41,40 +57,18 @@ function formatEventTime(timestamp: number): string {
 }
 
 export function Dashboard(): JSX.Element {
-  const [data, setData] = useState<DashboardData>({
-    cameras: [],
-    systemStatus: null,
-    recentEvents: [],
-    eventStats: null,
+  const {
+    data,
+    loading: isLoading,
+    isFromCache,
+    lastFetched,
+  } = useOfflineData<DashboardData>({
+    fetcher: fetchDashboardData,
+    cacheKey: 'dashboard',
+    ttl: 5 * 60 * 1000, // 5 minutes
   })
-  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    const fetchData = async (): Promise<void> => {
-      try {
-        const [cameras, systemStatus, eventsData, eventStats] = await Promise.all([
-          camerasApi.list(),
-          systemApi.status(),
-          eventsApi.list({}, 1, 5),
-          eventsApi.getStats(),
-        ])
-        setData({
-          cameras,
-          systemStatus,
-          recentEvents: eventsData.events,
-          eventStats,
-        })
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-[80vh]">
         <Spinner size="lg" />
@@ -82,14 +76,22 @@ export function Dashboard(): JSX.Element {
     )
   }
 
-  const { cameras, systemStatus, recentEvents, eventStats } = data
+  const cameras = data?.cameras ?? []
+  const systemStatus = data?.systemStatus ?? null
+  const recentEvents = data?.recentEvents ?? []
+  const eventStats = data?.eventStats ?? null
 
   return (
     <div className="p-4">
       {/* Header */}
       <header className="mb-6">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-slate-400 text-sm">Welcome to ParcelGuard</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+            <p className="text-slate-400 text-sm">Welcome to ParcelGuard</p>
+          </div>
+          <CachedDataBadge isFromCache={isFromCache} lastFetched={lastFetched} />
+        </div>
       </header>
 
       {/* Stats grid */}
