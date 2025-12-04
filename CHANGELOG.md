@@ -75,6 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `apps/web/src/hooks/useBackgroundSync.ts` - Queue and sync actions when back online
     - `apps/web/src/components/ui/SyncStatus.tsx` - Pending sync status indicator
     - Automatic retry with max attempts
+  - API Documentation
+    - `docs/API.md` - Human-readable API documentation
+    - `docs/openapi.yaml` - OpenAPI 3.0 specification
 
 ### Changed
 - Updated DeleteConfirmModal with focus trap and escape key handling

@@ -872,7 +872,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 #### 7A.7 Documentation
 - [x] User guide (docs/USER_GUIDE.md)
 - [x] Troubleshooting guide (docs/TROUBLESHOOTING.md)
-- [ ] API documentation (OpenAPI spec)
+- [x] API documentation (docs/API.md, docs/openapi.yaml)
 - [ ] Contribution guidelines
 
 ### Deliverables

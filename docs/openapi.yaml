@@ -1,0 +1,910 @@
+openapi: 3.0.3
+info:
+  title: ParcelGuard API
+  description: |
+    REST API for ParcelGuard - a DIY multi-camera security system for monitoring
+    communal areas and protecting deliveries.
+  version: 1.0.0
+  contact:
+    name: ParcelGuard
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: Login, logout, and session management
+  - name: Cameras
+    description: Camera management and health
+  - name: Events
+    description: Motion events and recordings
+  - name: Settings
+    description: Application configuration
+  - name: Notifications
+    description: Push notification management
+  - name: System
+    description: System health and storage
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Session token obtained from login
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: NOT_FOUND
+        message:
+          type: string
+          example: Resource not found
+
+    Camera:
+      type: object
+      properties:
+        id:
+          type: string
+          example: front-door
+        name:
+          type: string
+          example: Front Door
+        streamUrl:
+          type: string
+          example: rtsp://192.168.1.100:8554/stream
+        status:
+          type: string
+          enum: [online, offline]
+        lastSeen:
+          type: integer
+          nullable: true
+          description: Unix timestamp in milliseconds
+        settings:
+          type: object
+          properties:
+            motionSensitivity:
+              type: integer
+              minimum: 0
+              maximum: 100
+            motionZones:
+              type: array
+              items:
+                type: object
+            recordingSchedule:
+              nullable: true
+            notificationsEnabled:
+              type: boolean
+        createdAt:
+          type: integer
+        updatedAt:
+          type: integer
+
+    MotionEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        cameraId:
+          type: string
+        timestamp:
+          type: integer
+          description: Unix timestamp in seconds
+        duration:
+          type: integer
+          nullable: true
+          description: Duration in seconds
+        thumbnailPath:
+          type: string
+          nullable: true
+        videoPath:
+          type: string
+          nullable: true
+        isImportant:
+          type: boolean
+        isFalseAlarm:
+          type: boolean
+        createdAt:
+          type: integer
+
+    EventStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        today:
+          type: integer
+        important:
+          type: integer
+        falseAlarms:
+          type: integer
+
+    Settings:
+      type: object
+      properties:
+        retentionDays:
+          type: integer
+          description: Days to keep events before auto-deletion
+        theme:
+          type: string
+          enum: [light, dark, system]
+        notificationsEnabled:
+          type: boolean
+        quietHoursEnabled:
+          type: boolean
+        quietHoursStart:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: '22:00'
+        quietHoursEnd:
+          type: string
+          pattern: '^([01]?[0-9]|2[0-3]):[0-5][0-9]$'
+          example: '07:00'
+        notificationCooldown:
+          type: integer
+          description: Seconds between notifications per camera
+        onboardingComplete:
+          type: boolean
+
+    NotificationStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        enabled:
+          type: boolean
+        quietHoursActive:
+          type: boolean
+        topic:
+          type: string
+          nullable: true
+
+    SystemStatus:
+      type: object
+      properties:
+        version:
+          type: string
+        uptime:
+          type: integer
+          description: System uptime in seconds
+        memory:
+          type: object
+          properties:
+            used:
+              type: integer
+            total:
+              type: integer
+            percentage:
+              type: integer
+        cameras:
+          type: object
+          properties:
+            total:
+              type: integer
+            online:
+              type: integer
+            offline:
+              type: integer
+
+    StorageStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        used:
+          type: integer
+        available:
+          type: integer
+        percentage:
+          type: integer
+        warning:
+          type: boolean
+        formatted:
+          type: object
+          properties:
+            total:
+              type: string
+            used:
+              type: string
+            available:
+              type: string
+        breakdown:
+          type: object
+          properties:
+            clips:
+              type: object
+              properties:
+                count:
+                  type: integer
+                size:
+                  type: integer
+                formatted:
+                  type: string
+            thumbnails:
+              type: object
+              properties:
+                count:
+                  type: integer
+                size:
+                  type: integer
+                formatted:
+                  type: string
+            database:
+              type: object
+              properties:
+                size:
+                  type: integer
+                formatted:
+                  type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Login with PIN
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin:
+                  type: string
+                  minLength: 4
+                  maxLength: 8
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      expiresAt:
+                        type: integer
+        '401':
+          description: Invalid PIN
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Logout and invalidate session
+      responses:
+        '200':
+          description: Logout successful
+
+  /auth/verify:
+    get:
+      tags: [Authentication]
+      summary: Verify current session
+      responses:
+        '200':
+          description: Session valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      valid:
+                        type: boolean
+                      expiresAt:
+                        type: integer
+        '401':
+          description: Invalid or expired session
+
+  /cameras:
+    get:
+      tags: [Cameras]
+      summary: List all cameras
+      responses:
+        '200':
+          description: List of cameras
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Camera'
+    post:
+      tags: [Cameras]
+      summary: Create a new camera
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, name, streamUrl]
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                streamUrl:
+                  type: string
+                motionSensitivity:
+                  type: integer
+                  default: 50
+                notificationsEnabled:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Camera created
+        '400':
+          description: Invalid request
+        '409':
+          description: Camera already exists
+
+  /cameras/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Cameras]
+      summary: Get camera by ID
+      responses:
+        '200':
+          description: Camera details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Camera'
+        '404':
+          description: Camera not found
+    put:
+      tags: [Cameras]
+      summary: Update camera settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                streamUrl:
+                  type: string
+                motionSensitivity:
+                  type: integer
+                motionZones:
+                  type: array
+                notificationsEnabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Camera updated
+        '404':
+          description: Camera not found
+    delete:
+      tags: [Cameras]
+      summary: Delete camera
+      responses:
+        '200':
+          description: Camera deleted
+        '404':
+          description: Camera not found
+
+  /cameras/{id}/health:
+    post:
+      tags: [Cameras]
+      summary: Receive camera health check
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temperature:
+                  type: number
+                uptime:
+                  type: string
+                ip:
+                  type: string
+      responses:
+        '200':
+          description: Health recorded
+
+  /cameras/test-stream:
+    post:
+      tags: [Cameras]
+      summary: Test stream URL accessibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [streamUrl]
+              properties:
+                streamUrl:
+                  type: string
+      responses:
+        '200':
+          description: Test result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      accessible:
+                        type: boolean
+                      latency:
+                        type: integer
+                      error:
+                        type: string
+
+  /events:
+    get:
+      tags: [Events]
+      summary: List events with filtering
+      parameters:
+        - name: cameraId
+          in: query
+          schema:
+            type: string
+        - name: startDate
+          in: query
+          schema:
+            type: integer
+        - name: endDate
+          in: query
+          schema:
+            type: integer
+        - name: isImportant
+          in: query
+          schema:
+            type: boolean
+        - name: isFalseAlarm
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/MotionEvent'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      pageSize:
+                        type: integer
+                      hasMore:
+                        type: boolean
+
+  /events/stats:
+    get:
+      tags: [Events]
+      summary: Get event statistics
+      responses:
+        '200':
+          description: Event stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/EventStats'
+
+  /events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Events]
+      summary: Get event by ID
+      responses:
+        '200':
+          description: Event details
+        '404':
+          description: Event not found
+    put:
+      tags: [Events]
+      summary: Update event flags
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                isImportant:
+                  type: boolean
+                isFalseAlarm:
+                  type: boolean
+      responses:
+        '200':
+          description: Event updated
+        '404':
+          description: Event not found
+    delete:
+      tags: [Events]
+      summary: Delete event
+      responses:
+        '200':
+          description: Event deleted
+        '404':
+          description: Event not found
+
+  /events/bulk-delete:
+    post:
+      tags: [Events]
+      summary: Delete multiple events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Events deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      deletedCount:
+                        type: integer
+
+  /events/{id}/thumbnail:
+    get:
+      tags: [Events]
+      summary: Get event thumbnail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Thumbnail image
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found
+
+  /events/{id}/video:
+    get:
+      tags: [Events]
+      summary: Stream event video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Video stream
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found
+
+  /events/{id}/download:
+    get:
+      tags: [Events]
+      summary: Download event video
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Video file download
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found
+
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Get application settings
+      responses:
+        '200':
+          description: Settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Settings'
+    put:
+      tags: [Settings]
+      summary: Update settings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Settings updated
+
+  /settings/pin:
+    put:
+      tags: [Settings]
+      summary: Change login PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPin, newPin]
+              properties:
+                currentPin:
+                  type: string
+                newPin:
+                  type: string
+                  minLength: 4
+                  maxLength: 8
+      responses:
+        '200':
+          description: PIN updated
+        '401':
+          description: Current PIN incorrect
+
+  /notifications/status:
+    get:
+      tags: [Notifications]
+      summary: Get notification status
+      responses:
+        '200':
+          description: Notification status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/NotificationStatus'
+
+  /notifications/test:
+    post:
+      tags: [Notifications]
+      summary: Send test notification
+      responses:
+        '200':
+          description: Test sent
+        '400':
+          description: Not configured
+        '500':
+          description: Send failed
+
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, error]
+                  timestamp:
+                    type: integer
+                  version:
+                    type: string
+
+  /system/status:
+    get:
+      tags: [System]
+      summary: Get system status
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/SystemStatus'
+
+  /system/storage:
+    get:
+      tags: [System]
+      summary: Get storage info
+      responses:
+        '200':
+          description: Storage stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/StorageStats'
+
+  /system/storage/cleanup:
+    post:
+      tags: [System]
+      summary: Trigger storage cleanup
+      responses:
+        '200':
+          description: Cleanup completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      eventsDeleted:
+                        type: integer
+                      filesDeleted:
+                        type: integer
+                      bytesFreed:
+                        type: integer
+                      bytesFreedFormatted:
+                        type: string
+
+  /frigate/events:
+    post:
+      tags: [Events]
+      summary: Frigate webhook endpoint
+      description: Receives motion events from Frigate. Called internally.
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [new, update, end]
+                before:
+                  type: object
+                after:
+                  type: object
+                  required: [id, camera]
+                  properties:
+                    id:
+                      type: string
+                    camera:
+                      type: string
+                    start_time:
+                      type: number
+                    end_time:
+                      type: number
+                      nullable: true
+                    has_clip:
+                      type: boolean
+                    has_snapshot:
+                      type: boolean
+      responses:
+        '201':
+          description: Event created
+        '200':
+          description: Event updated
+        '400':
+          description: Invalid payload
