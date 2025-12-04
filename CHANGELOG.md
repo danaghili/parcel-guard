@@ -80,6 +80,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `docs/API.md` - Human-readable API documentation
     - `docs/openapi.yaml` - OpenAPI 3.0 specification
   - `CONTRIBUTING.md` - Contribution guidelines for developers
+  - Lighthouse Audit Improvements
+    - Added `robots.txt` for SEO crawlers
+    - Enhanced meta description for better search visibility
+    - Main landmark on Login page for accessibility
+    - Improved color contrast on secondary text
+    - Lighthouse scores: Performance 86%, Accessibility 100%, Best Practices 100%, SEO 100%
 
 ### Changed
 - Updated DeleteConfirmModal with focus trap and escape key handling

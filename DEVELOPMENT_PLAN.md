@@ -25,7 +25,7 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 5 | Notifications | Push alerts on motion | Phase 4 | ✅ Complete |
 | 6A | Settings & Administration (Pre-Hardware) | Camera management UI, system settings, health dashboard | Phase 5 | ✅ Complete |
 | 6B | Settings & Administration (Post-Hardware) | Motion zone editor, recording schedules, real system stats | Phase 6A + Hardware | ⬜ Not started |
-| 7A | Polish & Optimisation (Pre-Hardware) | Performance, UX, PWA, accessibility | Phase 6A | ⬜ Not started |
+| 7A | Polish & Optimisation (Pre-Hardware) | Performance, UX, PWA, accessibility | Phase 6A | 🔄 In Progress |
 | 7B | Polish & Optimisation (Post-Hardware) | Real stream testing, final validation | Phase 7A + Hardware | ⬜ Not started |
 
 ---
@@ -820,7 +820,7 @@ Add hardware-dependent features: motion zone editor, recording schedules, real s
 
 ---
 
-## Phase 7A: Polish & Optimisation (Pre-Hardware) ⬜
+## Phase 7A: Polish & Optimisation (Pre-Hardware) 🔄
 
 ### Objective
 Performance improvements, UX refinements, full PWA capabilities, and accessibility - all achievable without hardware.
@@ -833,6 +833,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [ ] Image optimisation (WebP thumbnails)
 - [x] API response caching (short TTL)
 - [x] Code splitting for routes
+- [x] HLS.js lazy loading (523KB loaded on-demand)
 
 #### 7A.2 PWA Enhancements
 - [x] Offline mode - view cached events
@@ -863,10 +864,10 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] Reduced motion support
 
 #### 7A.6 Pre-Hardware Testing
-- [ ] Full regression test suite
+- [x] Full regression test suite (204 E2E tests, 154 unit tests)
 - [ ] Cross-browser testing (Chrome, Safari, Firefox) - UI only
 - [ ] Mobile device testing (iOS, Android) - UI only
-- [ ] Performance audit (Lighthouse) - mock streams
+- [x] Performance audit (Lighthouse) - Performance 86%, Accessibility 100%, Best Practices 100%, SEO 100%
 - [ ] Security audit - application layer
 
 #### 7A.7 Documentation
@@ -894,11 +895,11 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 
 ### Tests Required
 **Unit:**
-- [ ] Virtual scroll component
-- [ ] Offline cache logic
-- [ ] Background sync queue
-- [ ] Toast notification system
-- [ ] Keyboard navigation hooks
+- [x] Virtual scroll component (9 tests)
+- [x] Offline cache logic (useOfflineData hook)
+- [x] Background sync queue (useBackgroundSync hook)
+- [x] Toast notification system (8 tests)
+- [x] Keyboard navigation hooks
 
 **E2E:**
 - [ ] Install PWA flow
@@ -1035,4 +1036,4 @@ The system is designed so that **Phases 0-7A** can be developed without physical
 ---
 
 *Last Updated: December 2024*
-*Version: 1.5.0*
+*Version: 1.6.0*
