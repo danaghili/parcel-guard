@@ -842,7 +842,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] iOS standalone mode support
 
 #### 7A.3 UX Improvements
-- [ ] Onboarding flow for first-time setup
+- [x] Onboarding flow for first-time setup
 - [x] Empty states with helpful prompts
 - [x] Loading skeletons for all async content
 - [x] Toast notifications for actions

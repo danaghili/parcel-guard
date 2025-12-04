@@ -318,6 +318,7 @@ export interface Settings {
   quietHoursStart: string
   quietHoursEnd: string
   notificationCooldown: number
+  onboardingComplete: boolean
 }
 
 export interface NotificationStatus {

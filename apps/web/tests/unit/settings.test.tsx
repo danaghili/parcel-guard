@@ -146,6 +146,7 @@ describe('ThemeToggle', () => {
     quietHoursStart: '22:00',
     quietHoursEnd: '07:00',
     notificationCooldown: 60,
+    onboardingComplete: true,
   }
 
   beforeEach(() => {
@@ -179,7 +180,7 @@ describe('ThemeToggle', () => {
   it('should call API when theme is changed', async () => {
     vi.mocked(settingsApi.update).mockResolvedValue({
       ...defaultSettings,
-      theme: 'dark',
+      theme: 'dark' as const,
     })
 
     render(

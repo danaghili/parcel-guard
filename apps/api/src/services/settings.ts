@@ -10,6 +10,7 @@ export interface Settings {
   quietHoursStart: string
   quietHoursEnd: string
   notificationCooldown: number
+  onboardingComplete: boolean
 }
 
 interface SettingRow {
@@ -31,6 +32,7 @@ export function getSettings(): Settings {
     quietHoursStart: settingsMap.get('quietHoursStart') ?? '22:00',
     quietHoursEnd: settingsMap.get('quietHoursEnd') ?? '07:00',
     notificationCooldown: parseInt(settingsMap.get('notificationCooldown') ?? '60', 10),
+    onboardingComplete: settingsMap.get('onboardingComplete') === 'true',
   }
 }
 

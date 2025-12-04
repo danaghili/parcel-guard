@@ -48,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `apps/web/src/hooks/useVirtualScroll.ts` - IntersectionObserver-based virtualization
     - Optimizes EventList for >50 items by replacing off-screen cards with placeholders
     - Reduces DOM complexity while maintaining scroll position
+  - First-Time Onboarding Flow
+    - `apps/web/src/components/onboarding/OnboardingWizard.tsx` - Step-by-step wizard
+    - Welcome step with feature highlights
+    - Add camera step with stream URL testing
+    - Notifications configuration step
+    - Completion step with next steps guidance
+    - `onboardingComplete` setting to track setup status
   - Unit tests for Toast, Skeleton, and VirtualScroll components (95 total)
   - Fixed pre-existing test type errors
 
