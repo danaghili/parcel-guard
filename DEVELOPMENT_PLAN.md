@@ -831,12 +831,12 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] Lazy load event thumbnails (intersection observer)
 - [x] Virtual scrolling for event list (>50 items)
 - [ ] Image optimisation (WebP thumbnails)
-- [ ] API response caching (short TTL)
+- [x] API response caching (short TTL)
 - [x] Code splitting for routes
 
 #### 7A.2 PWA Enhancements
 - [x] Offline mode - view cached events
-- [ ] Background sync for actions taken offline
+- [x] Background sync for actions taken offline
 - [x] Install prompt (beforeinstallprompt)
 - [x] App icon and splash screen
 - [x] iOS standalone mode support
@@ -853,7 +853,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] Friendly error messages (no stack traces)
 - [x] Retry buttons for failed operations
 - [x] Network status indicator
-- [ ] Auto-retry for transient failures
+- [x] Auto-retry for transient failures
 
 #### 7A.5 Accessibility
 - [x] Keyboard navigation

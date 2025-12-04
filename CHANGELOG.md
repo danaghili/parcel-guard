@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - User Documentation
     - `docs/USER_GUIDE.md` - Comprehensive user guide covering all app features
     - `docs/TROUBLESHOOTING.md` - Troubleshooting guide for common issues
+  - API Client Enhancements
+    - Auto-retry for transient failures with exponential backoff
+    - In-memory response caching with configurable TTL
+    - Cache invalidation on mutations
+  - Background Sync for Offline Actions
+    - `apps/web/src/hooks/useBackgroundSync.ts` - Queue and sync actions when back online
+    - `apps/web/src/components/ui/SyncStatus.tsx` - Pending sync status indicator
+    - Automatic retry with max attempts
 
 ### Changed
 - Updated DeleteConfirmModal with focus trap and escape key handling

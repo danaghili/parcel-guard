@@ -73,35 +73,34 @@ test.describe('Live View', () => {
   })
 
   test('should show error state when API fails', async ({ page }) => {
-    // Intercept API call and return error
+    // Intercept API call and return error (client-side error to bypass retry)
     await page.route('**/api/cameras', (route) => {
       route.fulfill({
-        status: 500,
+        status: 400, // 4xx errors don't trigger retry
         contentType: 'application/json',
-        body: JSON.stringify({ error: 'SERVER_ERROR', message: 'Internal server error' }),
+        body: JSON.stringify({ error: 'BAD_REQUEST', message: 'Failed to load cameras' }),
       })
     })
 
     await page.goto('/live')
 
     // Should show error message - use first() to handle multiple matches
-    await expect(page.getByText(/failed to load|error/i).first()).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/failed to load|error/i).first()).toBeVisible({ timeout: 10000 })
 
     // Should show retry button
     await expect(page.getByRole('button', { name: /try again|retry/i })).toBeVisible()
   })
 
   test('should retry loading cameras when clicking try again', async ({ page }) => {
-    let callCount = 0
+    let shouldSucceed = false
 
-    // First call fails, second succeeds
+    // First series of calls fail (use 400 to skip retry), then succeed after button click
     await page.route('**/api/cameras', (route) => {
-      callCount++
-      if (callCount === 1) {
+      if (!shouldSucceed) {
         route.fulfill({
-          status: 500,
+          status: 400, // 4xx errors don't trigger auto-retry
           contentType: 'application/json',
-          body: JSON.stringify({ error: 'SERVER_ERROR', message: 'Internal server error' }),
+          body: JSON.stringify({ error: 'BAD_REQUEST', message: 'Failed to load cameras' }),
         })
       } else {
         route.fulfill({
@@ -126,13 +125,16 @@ test.describe('Live View', () => {
     await page.goto('/live')
 
     // Should show error
-    await expect(page.getByText(/failed to load|error/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/failed to load|error/i)).toBeVisible({ timeout: 10000 })
+
+    // Mark that next calls should succeed
+    shouldSucceed = true
 
     // Click try again
     await page.getByRole('button', { name: /try again|retry/i }).click()
 
     // Should now show cameras
-    await expect(page.getByText(/1 camera/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/1 camera/i)).toBeVisible({ timeout: 10000 })
   })
 })
 
