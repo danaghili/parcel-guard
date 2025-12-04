@@ -343,11 +343,10 @@ export const eventsRoutes: FastifyPluginAsync = async (
    * Get event thumbnail
    * Supports WebP format if client accepts it (via Accept header)
    * Falls back to JPEG for older browsers
+   * Note: No auth required - event IDs are random UUIDs and thumbnails
+   * need to be loadable via <img> tags which can't send auth headers
    */
-  server.get<{ Params: EventParams }>(
-    '/events/:id/thumbnail',
-    { preHandler: requireAuth },
-    async (request, reply) => {
+  server.get<{ Params: EventParams }>('/events/:id/thumbnail', async (request, reply) => {
       const { id } = request.params
       const event = getEventById(id)
 
