@@ -74,7 +74,7 @@ const navItems: NavItem[] = [
 export function BottomNav(): JSX.Element {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 safe-bottom"
+      className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 safe-bottom"
       role="navigation"
       aria-label="Main navigation"
     >
@@ -86,8 +86,8 @@ export function BottomNav(): JSX.Element {
             aria-label={item.label}
             className={({ isActive }) => `
               flex flex-col items-center justify-center gap-1 px-4 py-2
-              transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-slate-800 rounded-lg
-              ${isActive ? 'text-primary-400' : 'text-slate-400 hover:text-slate-200'}
+              transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-800 rounded-lg
+              ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'}
             `}
           >
             <span aria-hidden="true">{item.icon}</span>

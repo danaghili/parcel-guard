@@ -164,8 +164,8 @@ export function EventFilters({
           value={filters.cameraId ?? ''}
           onChange={(e) => handleCameraChange(e.target.value)}
           className="
-            bg-slate-800 border border-slate-700 rounded-lg px-3 py-2
-            text-sm text-slate-100
+            bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2
+            text-sm text-gray-900 dark:text-slate-100
             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
           "
         >
@@ -178,7 +178,7 @@ export function EventFilters({
         </select>
 
         {/* Date preset buttons */}
-        <div className="flex rounded-lg overflow-hidden border border-slate-700">
+        <div className="flex rounded-lg overflow-hidden border border-gray-300 dark:border-slate-700">
           {(['all', 'today', 'week', 'month'] as DatePreset[]).map((preset) => (
             <button
               key={preset}
@@ -188,7 +188,7 @@ export function EventFilters({
                 ${
                   currentPreset === preset && !showCustomDates
                     ? 'bg-primary-600 text-white'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
                 }
               `}
             >
@@ -205,7 +205,7 @@ export function EventFilters({
               ${
                 showCustomDates || currentPreset === 'custom'
                   ? 'bg-primary-600 text-white'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700'
               }
             `}
           >
@@ -236,8 +236,8 @@ export function EventFilters({
             }
           }}
           className="
-            bg-slate-800 border border-slate-700 rounded-lg px-3 py-2
-            text-sm text-slate-100
+            bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-2
+            text-sm text-gray-900 dark:text-slate-100
             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
           "
         >
@@ -251,7 +251,7 @@ export function EventFilters({
           <button
             onClick={clearFilters}
             className="
-              px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200
+              px-3 py-2 text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200
               transition-colors
             "
           >
@@ -263,28 +263,28 @@ export function EventFilters({
       {/* Custom date inputs */}
       {showCustomDates && (
         <div className="flex flex-wrap gap-3 items-center">
-          <label className="flex items-center gap-2 text-sm text-slate-400">
+          <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
             From:
             <input
               type="date"
               value={timestampToDateInput(filters.startDate)}
               onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
               className="
-                bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5
-                text-sm text-slate-100
+                bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-1.5
+                text-sm text-gray-900 dark:text-slate-100
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
               "
             />
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-400">
+          <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
             To:
             <input
               type="date"
               value={timestampToDateInput(filters.endDate)}
               onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
               className="
-                bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5
-                text-sm text-slate-100
+                bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-1.5
+                text-sm text-gray-900 dark:text-slate-100
                 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
               "
             />

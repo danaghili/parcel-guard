@@ -13,10 +13,10 @@ export function EventStats({ stats, loading, className = '' }: EventStatsProps):
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="bg-slate-800 rounded-lg p-3 animate-pulse"
+            className="bg-white dark:bg-slate-800 rounded-lg p-3 animate-pulse shadow-sm"
           >
-            <div className="h-4 bg-slate-700 rounded w-16 mb-2" />
-            <div className="h-6 bg-slate-700 rounded w-10" />
+            <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-16 mb-2" />
+            <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-10" />
           </div>
         ))}
       </div>
@@ -24,10 +24,10 @@ export function EventStats({ stats, loading, className = '' }: EventStatsProps):
   }
 
   const statItems = [
-    { label: 'Total', value: stats.total, color: 'text-slate-100' },
-    { label: 'Today', value: stats.today, color: 'text-blue-400' },
-    { label: 'Important', value: stats.important, color: 'text-yellow-400' },
-    { label: 'False Alarms', value: stats.falseAlarms, color: 'text-slate-400' },
+    { label: 'Total', value: stats.total, color: 'text-gray-900 dark:text-slate-100' },
+    { label: 'Today', value: stats.today, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Important', value: stats.important, color: 'text-yellow-600 dark:text-yellow-400' },
+    { label: 'False Alarms', value: stats.falseAlarms, color: 'text-gray-500 dark:text-slate-400' },
   ]
 
   return (
@@ -35,9 +35,9 @@ export function EventStats({ stats, loading, className = '' }: EventStatsProps):
       {statItems.map((item) => (
         <div
           key={item.label}
-          className="bg-slate-800 rounded-lg p-3"
+          className="bg-white dark:bg-slate-800 rounded-lg p-3 shadow-sm"
         >
-          <p className="text-xs text-slate-400 mb-1">{item.label}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">{item.label}</p>
           <p className={`text-xl font-semibold ${item.color}`}>
             {item.value.toLocaleString()}
           </p>

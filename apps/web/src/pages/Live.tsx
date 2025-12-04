@@ -37,14 +37,14 @@ export function Live(): JSX.Element {
       <header className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Live View</h1>
-          <p className="text-slate-400 text-sm">
+          <p className="text-gray-500 dark:text-slate-400 text-sm">
             {cameras.length} camera{cameras.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={handleRefresh}
           disabled={loading}
-          className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+          className="p-2 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
           aria-label="Refresh cameras"
         >
           <svg
@@ -66,8 +66,8 @@ export function Live(): JSX.Element {
       {loading && cameras.length === 0 ? (
         <CameraGridSkeleton count={4} />
       ) : error ? (
-        <div className="bg-red-900/20 border border-red-800 rounded-lg p-4 text-center">
-          <p className="text-red-400 mb-3">{error}</p>
+        <div className="bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg p-4 text-center">
+          <p className="text-red-600 dark:text-red-400 mb-3">{error}</p>
           <button
             onClick={handleRefresh}
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors"

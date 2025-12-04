@@ -53,14 +53,14 @@ export function EventCard({ event, camera, className = '' }: EventCardProps): JS
     <Link
       to={`/events/${event.id}`}
       className={`
-        block bg-slate-800 rounded-lg overflow-hidden
-        hover:bg-slate-700 transition-colors
+        block bg-white dark:bg-slate-800 rounded-lg overflow-hidden shadow-sm
+        hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors
         focus:outline-none focus:ring-2 focus:ring-primary-500
         ${className}
       `}
     >
       {/* Thumbnail */}
-      <div className="aspect-video bg-slate-900 relative">
+      <div className="aspect-video bg-gray-200 dark:bg-slate-900 relative">
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}
@@ -71,7 +71,7 @@ export function EventCard({ event, camera, className = '' }: EventCardProps): JS
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <svg
-              className="w-12 h-12 text-slate-600"
+              className="w-12 h-12 text-gray-400 dark:text-slate-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -104,7 +104,7 @@ export function EventCard({ event, camera, className = '' }: EventCardProps): JS
             </span>
           )}
           {event.isFalseAlarm && (
-            <span className="px-1.5 py-0.5 bg-slate-500/90 text-slate-100 text-xs font-medium rounded">
+            <span className="px-1.5 py-0.5 bg-gray-500/90 dark:bg-slate-500/90 text-white dark:text-slate-100 text-xs font-medium rounded">
               False Alarm
             </span>
           )}
@@ -114,10 +114,10 @@ export function EventCard({ event, camera, className = '' }: EventCardProps): JS
       {/* Event info */}
       <div className="p-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-white truncate">
+          <span className="text-sm font-medium truncate">
             {camera?.name ?? event.cameraId}
           </span>
-          <span className="text-xs text-slate-400 whitespace-nowrap ml-2">
+          <span className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap ml-2">
             {formatTimestamp(event.timestamp)}
           </span>
         </div>

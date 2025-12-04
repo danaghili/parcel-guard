@@ -171,8 +171,8 @@ export function Events(): JSX.Element {
     <div className="p-4 max-w-7xl mx-auto">
       {/* Header */}
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Events</h1>
-        <p className="text-slate-400 text-sm">Motion events captured by your cameras</p>
+        <h1 className="text-2xl font-bold">Events</h1>
+        <p className="text-gray-500 dark:text-slate-400 text-sm">Motion events captured by your cameras</p>
       </header>
 
       {/* Stats */}
@@ -188,11 +188,11 @@ export function Events(): JSX.Element {
 
       {/* Error state */}
       {error && (
-        <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6">
-          <p className="text-red-200">{error}</p>
+        <div className="bg-red-100 dark:bg-red-900/50 border border-red-300 dark:border-red-700 rounded-lg p-4 mb-6">
+          <p className="text-red-700 dark:text-red-200">{error}</p>
           <button
             onClick={() => fetchEvents(1, false)}
-            className="mt-2 text-sm text-red-300 hover:text-red-100 underline"
+            className="mt-2 text-sm text-red-600 dark:text-red-300 hover:text-red-800 dark:hover:text-red-100 underline"
           >
             Try again
           </button>

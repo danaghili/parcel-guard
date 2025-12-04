@@ -20,7 +20,7 @@ export function CameraCard({ camera }: CameraCardProps): JSX.Element {
   return (
     <button
       onClick={handleClick}
-      className="relative aspect-video bg-slate-800 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500 group"
+      className="relative aspect-video bg-gray-200 dark:bg-slate-800 rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500 group shadow-sm"
     >
       <CameraPlayer
         streamUrl={camera.status === 'online' ? camera.streamUrl : null}

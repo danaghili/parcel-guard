@@ -7,7 +7,7 @@ export function AppShell(): JSX.Element {
   useKeyboardShortcuts()
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-100">
       {/* Skip to main content link for keyboard/screen reader users */}
       <a
         href="#main-content"
