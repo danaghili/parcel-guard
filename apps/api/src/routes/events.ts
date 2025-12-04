@@ -17,6 +17,7 @@ import type { FrigateEventPayload, EventFilters } from '@parcelguard/shared'
 import { createReadStream, existsSync } from 'fs'
 import { stat } from 'fs/promises'
 import path from 'path'
+import { optimizeImage, getBestFormat } from '../services/images'
 
 // Base paths for media files
 const CLIPS_PATH = process.env.CLIPS_PATH ?? './data/clips'
@@ -340,6 +341,8 @@ export const eventsRoutes: FastifyPluginAsync = async (
 
   /**
    * Get event thumbnail
+   * Supports WebP format if client accepts it (via Accept header)
+   * Falls back to JPEG for older browsers
    */
   server.get<{ Params: EventParams }>(
     '/events/:id/thumbnail',
@@ -371,12 +374,33 @@ export const eventsRoutes: FastifyPluginAsync = async (
         })
       }
 
-      const stats = await stat(filePath)
-      reply.header('Content-Type', 'image/jpeg')
-      reply.header('Content-Length', stats.size)
-      reply.header('Cache-Control', 'public, max-age=31536000') // Cache for 1 year
+      // Determine best format based on Accept header
+      const acceptHeader = request.headers.accept
+      const format = getBestFormat(acceptHeader)
 
-      return reply.send(createReadStream(filePath))
+      try {
+        // Optimize image (convert to WebP if supported, with caching)
+        const { buffer, contentType } = await optimizeImage(filePath, {
+          format,
+          quality: 80,
+        })
+
+        reply.header('Content-Type', contentType)
+        reply.header('Content-Length', buffer.length)
+        reply.header('Cache-Control', 'public, max-age=31536000') // Cache for 1 year
+        reply.header('Vary', 'Accept') // Vary by Accept header for correct caching
+
+        return reply.send(buffer)
+      } catch (error) {
+        // Fallback to original file if optimization fails
+        server.log.warn({ error, eventId: id }, 'Image optimization failed, serving original')
+        const stats = await stat(filePath)
+        reply.header('Content-Type', 'image/jpeg')
+        reply.header('Content-Length', stats.size)
+        reply.header('Cache-Control', 'public, max-age=31536000')
+
+        return reply.send(createReadStream(filePath))
+      }
     },
   )
 

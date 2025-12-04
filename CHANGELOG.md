@@ -80,6 +80,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `docs/API.md` - Human-readable API documentation
     - `docs/openapi.yaml` - OpenAPI 3.0 specification
   - `CONTRIBUTING.md` - Contribution guidelines for developers
+  - Image Optimization
+    - WebP format support for thumbnails (30-50% smaller than JPEG)
+    - Automatic format negotiation via Accept header
+    - Server-side image caching for converted images
+    - Fallback to JPEG for older browsers
   - Lighthouse Audit Improvements
     - Added `robots.txt` for SEO crawlers
     - Enhanced meta description for better search visibility
