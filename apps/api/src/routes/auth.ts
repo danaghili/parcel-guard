@@ -7,18 +7,22 @@ interface LoginBody {
 }
 
 // Rate limit config for login endpoint (brute force protection)
-const loginRateLimit = {
-  config: {
-    rateLimit: {
-      max: 5, // 5 attempts
-      timeWindow: '1 minute', // per minute
-      errorResponseBuilder: () => ({
-        error: 'TOO_MANY_REQUESTS',
-        message: 'Too many login attempts. Please try again in 1 minute.',
-      }),
-    },
-  },
-}
+// Disabled in test environment to allow parallel test execution
+const isTestEnv = process.env.NODE_ENV === 'test'
+const loginRateLimit = isTestEnv
+  ? {}
+  : {
+      config: {
+        rateLimit: {
+          max: 5, // 5 attempts
+          timeWindow: '1 minute', // per minute
+          errorResponseBuilder: () => ({
+            error: 'TOO_MANY_REQUESTS',
+            message: 'Too many login attempts. Please try again in 1 minute.',
+          }),
+        },
+      },
+    }
 
 export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance): Promise<void> => {
   // Login with rate limiting to prevent brute force attacks
