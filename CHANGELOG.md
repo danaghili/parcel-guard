@@ -78,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - API Documentation
     - `docs/API.md` - Human-readable API documentation
     - `docs/openapi.yaml` - OpenAPI 3.0 specification
+  - `CONTRIBUTING.md` - Contribution guidelines for developers
 
 ### Changed
 - Updated DeleteConfirmModal with focus trap and escape key handling

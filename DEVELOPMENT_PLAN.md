@@ -873,7 +873,7 @@ Performance improvements, UX refinements, full PWA capabilities, and accessibili
 - [x] User guide (docs/USER_GUIDE.md)
 - [x] Troubleshooting guide (docs/TROUBLESHOOTING.md)
 - [x] API documentation (docs/API.md, docs/openapi.yaml)
-- [ ] Contribution guidelines
+- [x] Contribution guidelines (CONTRIBUTING.md)
 
 ### Deliverables
 - Smooth, responsive application
