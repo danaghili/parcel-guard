@@ -2,6 +2,7 @@ import 'dotenv/config'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import { initDb } from './db'
 import { runMigrations } from './db/migrate'
 import { authRoutes } from './routes/auth'
@@ -50,6 +51,11 @@ async function buildServer(
   await server.register(helmet)
   await server.register(cors, {
     origin: process.env.NODE_ENV === 'production' ? false : true,
+  })
+
+  // Rate limiting for brute force protection
+  await server.register(rateLimit, {
+    global: false, // Only apply to specific routes
   })
 
   // Register routes

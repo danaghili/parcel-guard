@@ -6,9 +6,23 @@ interface LoginBody {
   pin: string
 }
 
+// Rate limit config for login endpoint (brute force protection)
+const loginRateLimit = {
+  config: {
+    rateLimit: {
+      max: 5, // 5 attempts
+      timeWindow: '1 minute', // per minute
+      errorResponseBuilder: () => ({
+        error: 'TOO_MANY_REQUESTS',
+        message: 'Too many login attempts. Please try again in 1 minute.',
+      }),
+    },
+  },
+}
+
 export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance): Promise<void> => {
-  // Login
-  server.post<{ Body: LoginBody }>('/auth/login', async (request, reply) => {
+  // Login with rate limiting to prevent brute force attacks
+  server.post<{ Body: LoginBody }>('/auth/login', loginRateLimit, async (request, reply) => {
     const { pin } = request.body
 
     if (!pin || typeof pin !== 'string') {

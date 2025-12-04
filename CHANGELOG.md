@@ -85,6 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Automatic format negotiation via Accept header
     - Server-side image caching for converted images
     - Fallback to JPEG for older browsers
+  - Security Enhancements
+    - Rate limiting on login endpoint (5 attempts per minute)
+    - Brute force attack prevention
+    - Full security audit completed (OWASP Top 10 compliant)
   - Lighthouse Audit Improvements
     - Added `robots.txt` for SEO crawlers
     - Enhanced meta description for better search visibility
