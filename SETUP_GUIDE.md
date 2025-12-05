@@ -16,6 +16,7 @@ A step-by-step guide to assembling and configuring your ParcelGuard security sys
 8. [Testing the System](#8-testing-the-system)
 9. [Concealment Tips](#9-concealment-tips)
 10. [Troubleshooting](#10-troubleshooting)
+11. [Upgrades](#11-upgrades)
 
 ---
 
@@ -30,19 +31,32 @@ Before starting, verify you have all components.
 | Raspberry Pi 4 (4GB RAM) | 1 | 4GB recommended for running Frigate |
 | Official Pi 4 USB-C Power Supply (5.1V 3A) | 1 | UK plug, must be 3A for reliable operation |
 | Argon ONE M.2 Case (or similar) | 1 | Provides cooling and SSD mounting |
-| MicroSD Card (32GB+) | 1 | For the operating system |
-| M.2 SATA SSD (256GB) | 1 | For video storage - must be SATA, not NVMe |
+| MicroSD Card (32GB+) | 1 | For the operating system (use 64GB+ if not using SSD initially) |
 | Ethernet Cable (optional) | 1 | For initial setup if WiFi is problematic |
+
+### Hub Upgrades (Install Later)
+
+| Item | Qty | Notes |
+|------|-----|-------|
+| M.2 SATA SSD (256GB) | 1 | For video storage - **must be SATA, not NVMe** |
 
 ### Per Camera Unit (×2)
 
 | Item | Qty | Notes |
 |------|-----|-------|
 | Raspberry Pi Zero 2 W | 1 | Must be the "2 W" version (has WiFi) |
-| Camera Module (ZDE 5MP OV5647) | 1 | Includes ribbon cable and Zero adapter |
+| Camera Module (ZDE 5MP OV5647) | 1 | Includes ribbon cable and Zero adapter (can upgrade later) |
 | MicroSD Card (16GB+) | 1 | For the operating system |
 | 20,000mAh USB Power Bank | 2 | Two per camera (one in use, one charging) |
 | USB-A to Micro USB Cable | 1 | Short cable preferred (30cm) |
+
+### Camera Upgrades (Optional)
+
+| Item | Qty | Notes |
+|------|-----|-------|
+| Upgraded Camera Module | Per camera | Smaller form factor with same OV5647 sensor |
+
+> **Note:** The initial cameras work fine - upgrades are optional for better concealment with smaller chips.
 
 ### Accessories
 
@@ -68,6 +82,8 @@ Before starting, verify you have all components.
 
 ## 3. Hub Assembly (Pi 4)
 
+> **Note:** This guide gets you up and running WITHOUT the SSD first. The SSD can be installed later once you have the correct SATA model - see [Section 11: Upgrades](#11-upgrades).
+
 ### Step 3.1: Prepare the Argon ONE Case
 
 1. Unbox the Argon ONE M.2 case
@@ -78,17 +94,7 @@ Before starting, verify you have all components.
    - Screws
    - GPIO extension board
 
-### Step 3.2: Install the SSD
-
-**Important:** Do this BEFORE inserting the Pi 4.
-
-1. Remove the bottom cover of the Argon case (4 screws underneath)
-2. Locate the M.2 SATA slot inside
-3. Insert your M.2 SSD at a 30° angle into the slot
-4. Press down and secure with the small screw provided
-5. Replace the bottom cover
-
-### Step 3.3: Apply Thermal Pads
+### Step 3.2: Apply Thermal Pads
 
 1. Locate the thermal pads (usually included with the case)
 2. Apply thermal pads to the Pi 4's CPU and RAM chips:
@@ -96,20 +102,20 @@ Before starting, verify you have all components.
    - Smaller pads on RAM chips if provided
 3. Remove the protective film from both sides of each pad
 
-### Step 3.4: Install the Pi 4
+### Step 3.3: Install the Pi 4
 
 1. Align the Pi 4 with the case, GPIO pins facing the extension board
 2. Gently press the Pi 4 onto the GPIO extension connector
 3. Ensure all ports align with the case openings
 4. The board should sit flat with thermal pads making contact with the case lid
 
-### Step 3.5: Close the Case
+### Step 3.4: Close the Case
 
 1. Position the top cover over the Pi 4
 2. Insert and tighten the 4 corner screws
 3. Don't overtighten - snug is sufficient
 
-### Step 3.6: Connect Power (Don't power on yet!)
+### Step 3.5: Set Aside (Don't power on yet!)
 
 1. Set the case aside - we'll flash the SD card first
 2. DO NOT insert the SD card or connect power yet
@@ -139,10 +145,15 @@ The Pi Zero uses a **smaller camera connector** than the Pi 4. You need the adap
 
 1. On the camera board, locate the ribbon connector
 2. Gently pull up the black/brown locking tab (it hinges, don't remove it)
+   - **Tip:** Use your fingernail to gently lift both sides evenly
+   - It only lifts about 1-2mm - don't force it further
 3. Insert the **wide end** of the ribbon cable:
    - Silver contacts facing DOWN (toward the camera board)
    - Blue backing facing UP
+   - The cable should slide in easily - if it won't go, check the tab is fully lifted
 4. Push the locking tab back down to secure
+   - You should feel a slight click
+   - The cable should NOT pull out easily when locked
 
 ### Step 4.4: Connect Cable to Pi Zero
 
@@ -188,9 +199,9 @@ You'll flash 3 SD cards total: 1 for the hub, 2 for cameras.
 3. Click the **gear icon** (or Ctrl+Shift+X) for advanced options:
 
    **General tab:**
-   - ✅ Set hostname: `parcelguard-hub`
+   - ✅ Set hostname: `ParcelGuard`
    - ✅ Set username and password:
-     - Username: `pi`
+     - Username: `dan`
      - Password: (choose a secure password - write it down!)
    - ✅ Configure wireless LAN:
      - SSID: (your WiFi network name)
@@ -227,7 +238,7 @@ Repeat for each camera (2 total):
 
    **For Camera 1:**
    - Hostname: `parcelguard-cam1`
-   - Username: `pi`
+   - Username: `dan`
    - Password: (same as hub, or different - write it down!)
    - WiFi: (same network as hub)
    - Timezone and keyboard: (same as hub)
@@ -263,7 +274,7 @@ From your computer, try to connect:
 
 ```bash
 # Try hostname first
-ping parcelguard-hub.local
+ping ParcelGuard.local
 
 # If that doesn't work, find it by IP
 # On Mac/Linux:
@@ -275,13 +286,13 @@ arp -a | grep -i raspberry
 ### Step 6.4: SSH into the Hub
 
 ```bash
-ssh pi@parcelguard-hub.local
+ssh dan@ParcelGuard.local
 # Enter the password you set during flashing
 ```
 
-If `parcelguard-hub.local` doesn't resolve, use the IP address:
+If `ParcelGuard.local` doesn't resolve, use the IP address:
 ```bash
-ssh pi@192.168.1.xxx
+ssh dan@192.168.1.xxx
 ```
 
 ### Step 6.5: Update the System
@@ -315,50 +326,28 @@ node --version   # Should show v20.x.x
 npm --version
 ```
 
-### Step 6.8: Mount the SSD
+### Step 6.8: Create Storage Directories
+
+We'll use the SD card for storage initially. When you install the SSD later (see [Section 11: Upgrades](#11-upgrades)), you'll migrate the data.
 
 ```bash
-# Check the SSD is detected
-lsblk
+# Create storage directory on SD card
+sudo mkdir -p /mnt/storage
+sudo chown -R dan:dan /mnt/storage
 
-# You should see something like:
-# sda      8:0    0 238.5G  0 disk
-# └─sda1   8:1    0 238.5G  0 part
-
-# If sda1 doesn't exist, create a partition:
-sudo fdisk /dev/sda
-# Type: n (new), p (primary), 1, Enter, Enter, w (write)
-
-# Format the SSD
-sudo mkfs.ext4 /dev/sda1
-
-# Create mount point
-sudo mkdir -p /mnt/ssd
-
-# Get the UUID
-sudo blkid /dev/sda1
-# Note the UUID value (looks like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-
-# Add to fstab (replace YOUR-UUID-HERE with actual UUID)
-echo "UUID=YOUR-UUID-HERE /mnt/ssd ext4 defaults,noatime 0 2" | sudo tee -a /etc/fstab
-
-# Mount it
-sudo mount -a
-
-# Set ownership
-sudo chown -R pi:pi /mnt/ssd
-
-# Create directories
-mkdir -p /mnt/ssd/parcelguard/{data,clips,thumbnails,logs,backups}
+# Create ParcelGuard directories
+mkdir -p /mnt/storage/parcelguard/{data,clips,thumbnails,logs,backups}
 
 # Verify
-df -h /mnt/ssd
+ls -la /mnt/storage/parcelguard/
 ```
+
+> **Note:** SD card storage works fine for testing and initial setup. For long-term use with better performance and longevity, install an SSD later - see [Section 11: Upgrades](#11-upgrades).
 
 ### Step 6.9: Clone ParcelGuard
 
 ```bash
-cd /home/pi
+cd /home/dan
 git clone https://github.com/yourusername/parcelguard.git
 cd parcelguard
 
@@ -389,17 +378,20 @@ Complete these steps for each camera unit.
 
 1. Insert the appropriate SD card (CAM1 or CAM2)
 2. Connect the USB power bank via the micro USB **power** port (not the data port)
-   - The power port is typically labeled "PWR" or has a power symbol
+   - **IMPORTANT:** Pi Zero 2 W has TWO micro USB ports:
+     - The one closer to the HDMI port is for **POWER** (use this one!)
+     - The one in the middle is for **DATA** (don't use for power)
+   - If you plug into the wrong port, nothing will happen
 3. Wait 2-3 minutes for first boot
 
 ### Step 7.2: SSH into the Camera
 
 ```bash
 # For Camera 1
-ssh pi@parcelguard-cam1.local
+ssh dan@parcelguard-cam1.local
 
 # For Camera 2
-ssh pi@parcelguard-cam2.local
+ssh dan@parcelguard-cam2.local
 ```
 
 ### Step 7.3: Update and Enable Camera
@@ -472,7 +464,7 @@ You should see stream information (resolution, codec, etc.) if working.
 ### Step 8.2: Test the Web Interface
 
 1. On your phone or computer, open a browser
-2. Navigate to: `http://parcelguard-hub.local`
+2. Navigate to: `http://ParcelGuard.local`
 3. You should see the ParcelGuard interface
 
 ### Step 8.3: Test Live View
@@ -585,10 +577,12 @@ You should see stream information (resolution, codec, etc.) if working.
 3. Improve ventilation around the device
 4. Reduce stream quality if needed (lower resolution)
 
-### SSD Not Detected
+### SSD Not Detected (After Upgrade)
+
+If you've installed an SSD per [Section 11: Upgrades](#11-upgrades) and it's not working:
 
 **Solutions:**
-1. Verify it's a SATA SSD (not NVMe)
+1. Verify it's a SATA SSD (not NVMe) - the Argon case does NOT support NVMe
 2. Check M.2 is fully seated in slot
 3. Try reseating the SSD
 4. Test SSD in another computer if possible
@@ -601,9 +595,9 @@ You should see stream information (resolution, codec, etc.) if working.
 
 | Device | Hostname | Default User |
 |--------|----------|--------------|
-| Hub | `parcelguard-hub.local` | pi |
-| Camera 1 | `parcelguard-cam1.local` | pi |
-| Camera 2 | `parcelguard-cam2.local` | pi |
+| Hub (ParcelGuard) | `ParcelGuard.local` | dan |
+| Camera 1 | `parcelguard-cam1.local` | dan |
+| Camera 2 | `parcelguard-cam2.local` | dan |
 
 ### Important Ports
 
@@ -645,8 +639,198 @@ Once your system is assembled and running:
 2. Configure Cloudflare Tunnel for remote access
 3. Set up automated backups
 4. Fine-tune motion detection zones in Frigate
+5. Install upgrades (SSD, new cameras) - see [Section 11: Upgrades](#11-upgrades)
 
 For detailed configuration, refer to [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md).
+
+---
+
+## 11. Upgrades
+
+Once your system is tested and working, you can install these upgrades for improved performance and concealment.
+
+### 11.1: Install M.2 SATA SSD
+
+**When to do this:** After the system is fully working with SD card storage.
+
+**Requirements:**
+- M.2 SATA SSD (256GB+) - **MUST be SATA, not NVMe**
+- The Argon ONE case only supports M.2 SATA drives
+- Common compatible drives: Samsung 860 EVO, Crucial MX500, WD Blue
+
+#### Step 1: Prepare for Migration
+
+SSH into the hub and stop services:
+
+```bash
+ssh dan@ParcelGuard.local
+
+# Stop ParcelGuard services
+sudo systemctl stop parcelguard-api
+sudo systemctl stop frigate
+
+# Back up existing data (optional but recommended)
+tar -czvf ~/parcelguard-backup.tar.gz /mnt/storage/parcelguard/
+```
+
+#### Step 2: Shut Down and Install SSD
+
+```bash
+sudo shutdown now
+```
+
+1. Disconnect power from the Pi 4
+2. Remove the 4 screws from the bottom of the Argon case
+3. Carefully remove the bottom cover
+4. Locate the M.2 SATA slot inside
+5. Insert your M.2 SSD at a 30° angle into the slot
+6. Press down and secure with the small screw provided
+7. Replace the bottom cover and screws
+8. Reconnect power
+
+#### Step 3: Partition and Format the SSD
+
+SSH back in once the Pi boots:
+
+```bash
+ssh dan@ParcelGuard.local
+
+# Check the SSD is detected
+lsblk
+
+# You should see something like:
+# sda      8:0    0 238.5G  0 disk
+
+# Create a partition
+sudo fdisk /dev/sda
+# Type: n (new), p (primary), 1, Enter, Enter, w (write)
+
+# Format the SSD
+sudo mkfs.ext4 /dev/sda1
+```
+
+#### Step 4: Mount the SSD
+
+```bash
+# Create mount point
+sudo mkdir -p /mnt/ssd
+
+# Get the UUID
+sudo blkid /dev/sda1
+# Note the UUID value (looks like: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+
+# Add to fstab (replace YOUR-UUID-HERE with actual UUID)
+echo "UUID=YOUR-UUID-HERE /mnt/ssd ext4 defaults,noatime 0 2" | sudo tee -a /etc/fstab
+
+# Mount it
+sudo mount -a
+
+# Set ownership
+sudo chown -R dan:dan /mnt/ssd
+
+# Verify
+df -h /mnt/ssd
+```
+
+#### Step 5: Migrate Data to SSD
+
+```bash
+# Create directories on SSD
+mkdir -p /mnt/ssd/parcelguard/{data,clips,thumbnails,logs,backups}
+
+# Copy existing data from SD card storage
+cp -r /mnt/storage/parcelguard/* /mnt/ssd/parcelguard/
+
+# Update symlink to point to new location
+sudo rm -rf /mnt/storage
+sudo ln -s /mnt/ssd /mnt/storage
+
+# Verify the symlink works
+ls -la /mnt/storage/parcelguard/
+```
+
+#### Step 6: Restart Services
+
+```bash
+# Start services
+sudo systemctl start parcelguard-api
+sudo systemctl start frigate
+
+# Verify everything is working
+sudo systemctl status parcelguard-api
+sudo systemctl status frigate
+```
+
+#### Step 7: Clean Up (Optional)
+
+Once you've verified everything works with the SSD:
+
+```bash
+# Remove the backup if not needed
+rm ~/parcelguard-backup.tar.gz
+```
+
+---
+
+### 11.2: Upgrade Camera Modules
+
+**When to do this:** After cameras are tested and working, if you want smaller form factors for better concealment.
+
+**Why upgrade:** The initial ZDE 5MP OV5647 cameras work fine but have larger PCBs. Cameras with smaller chips are easier to conceal in discreet housings.
+
+#### Step 1: Order Compatible Cameras
+
+Look for camera modules with:
+- **Same sensor:** OV5647 (5MP) for compatibility
+- **Smaller PCB:** Look for "spy camera" or "pinhole camera" variants
+- **Pi Zero ribbon cable:** Must include or be compatible with the narrow Zero connector
+
+#### Step 2: Power Down Camera Unit
+
+```bash
+ssh dan@parcelguard-cam1.local
+sudo shutdown now
+```
+
+Disconnect the power bank.
+
+#### Step 3: Swap Camera Module
+
+1. Gently lift the locking tab on the Pi Zero camera connector
+2. Remove the old ribbon cable
+3. Connect the new camera module's ribbon cable:
+   - Silver contacts facing DOWN (toward the Pi Zero board)
+   - Blue backing facing UP
+4. Push the locking tab back down firmly
+
+#### Step 4: Test New Camera
+
+Power on and SSH back in:
+
+```bash
+ssh dan@parcelguard-cam1.local
+
+# Test camera is detected
+libcamera-hello --list-cameras
+
+# Take a test photo
+libcamera-still -o test.jpg
+```
+
+If the camera is detected and takes photos, it's working correctly.
+
+#### Step 5: Verify Streaming
+
+```bash
+# Check the streaming service
+sudo systemctl status parcelguard-camera
+
+# From the hub, test the stream
+# ssh dan@ParcelGuard.local
+# ffprobe rtsp://parcelguard-cam1.local:8554/stream
+```
+
+Repeat for each camera you want to upgrade.
 
 ---
 
