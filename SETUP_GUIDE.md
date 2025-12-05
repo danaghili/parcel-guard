@@ -413,7 +413,7 @@ After reboot, SSH back in and test:
 
 ```bash
 # Check camera is detected
-libcamera-hello --list-cameras
+rpicam-hello --list-cameras
 
 # You should see output like:
 # Available cameras
@@ -421,27 +421,164 @@ libcamera-hello --list-cameras
 # 0 : ov5647 [2592x1944] (/base/soc/i2c0mux/i2c@1/ov5647@36)
 
 # Take a test photo
-libcamera-still -o test.jpg
+rpicam-still -o test.jpg
 
 # If this works, your camera is connected correctly!
 ```
+
+> **Note:** Older guides may reference `libcamera-hello` and `libcamera-still`. On Raspberry Pi OS Bookworm and later, these have been renamed to `rpicam-hello` and `rpicam-still`.
 
 ### Step 7.5: Install Streaming Software
 
 ```bash
 # Install required packages
-sudo apt install -y libcamera-tools v4l-utils
+sudo apt install -y libcamera-tools v4l-utils ffmpeg
 
 # Download mediamtx (RTSP server)
 wget https://github.com/bluenviron/mediamtx/releases/download/v1.5.1/mediamtx_v1.5.1_linux_arm64v8.tar.gz
 tar -xzf mediamtx_v1.5.1_linux_arm64v8.tar.gz
 sudo mv mediamtx /usr/local/bin/
-sudo mv mediamtx.yml /etc/
+
+# Create mediamtx config directory and move config
+sudo mkdir -p /etc/mediamtx
+sudo mv mediamtx.yml /etc/mediamtx/mediamtx.yml
 ```
 
-### Step 7.6: Continue with DEPLOYMENT_SPEC.md
+### Step 7.6: Configure Camera Streaming
 
-For streaming configuration and systemd services, follow [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md) section **"Phase 2: Pi Zero Camera Setup"** from step 2.3 onwards.
+**Create the camera streaming script:**
+
+```bash
+sudo nano /usr/local/bin/camera-stream.sh
+```
+
+Add these two lines exactly (type them, don't copy-paste to avoid formatting issues):
+
+```bash
+#!/bin/bash
+rpicam-vid -t 0 --inline --width 1920 --height 1080 --framerate 15 --codec h264 --output - | ffmpeg -f h264 -i - -c:v copy -f rtsp rtsp://localhost:8554/stream
+```
+
+Save (Ctrl+X, Y, Enter) and make executable:
+
+```bash
+sudo chmod +x /usr/local/bin/camera-stream.sh
+```
+
+**Configure mediamtx:**
+
+```bash
+sudo nano /etc/mediamtx/mediamtx.yml
+```
+
+Find the `paths:` section at the bottom of the file and replace it with:
+
+```yaml
+paths:
+  stream:
+    source: publisher
+```
+
+Save the file.
+
+### Step 7.7: Test Streaming
+
+You need two SSH sessions to the camera for testing.
+
+**Session 1 - Start mediamtx:**
+
+```bash
+mediamtx
+```
+
+You should see "configuration loaded from /etc/mediamtx/mediamtx.yml" and listeners opening.
+
+**Session 2 - Start the camera stream:**
+
+```bash
+ssh dan@parcelguard-cam1.local
+/usr/local/bin/camera-stream.sh
+```
+
+You should see ffmpeg output showing it's streaming.
+
+**Test from your computer:**
+
+Open VLC → Media → Open Network Stream → Enter:
+
+```
+rtsp://parcelguard-cam1.local:8554/stream
+```
+
+If you see video, it's working! Press Ctrl+C in both SSH sessions to stop.
+
+### Step 7.8: Set Up Services (Auto-start)
+
+Create systemd services so streaming starts automatically on boot.
+
+**Camera stream service:**
+
+```bash
+sudo nano /etc/systemd/system/camera-stream.service
+```
+
+```ini
+[Unit]
+Description=Camera Stream
+After=network.target mediamtx.service
+Wants=mediamtx.service
+
+[Service]
+ExecStart=/usr/local/bin/camera-stream.sh
+Restart=always
+RestartSec=5
+User=dan
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Mediamtx service:**
+
+```bash
+sudo nano /etc/systemd/system/mediamtx.service
+```
+
+```ini
+[Unit]
+Description=MediaMTX RTSP Server
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/mediamtx /etc/mediamtx/mediamtx.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Enable and start the services:**
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable mediamtx camera-stream
+sudo systemctl start mediamtx
+sudo systemctl start camera-stream
+```
+
+**Verify both are running:**
+
+```bash
+sudo systemctl status mediamtx
+sudo systemctl status camera-stream
+```
+
+### Step 7.9: Repeat for Camera 2
+
+Repeat steps 7.1-7.8 for your second camera, using:
+- Hostname: `parcelguard-cam2`
+- SD card labeled "CAM2"
 
 ---
 
@@ -542,7 +679,7 @@ You should see stream information (resolution, codec, etc.) if working.
 
 ### Camera Not Detected
 
-**Symptoms:** `libcamera-hello --list-cameras` shows no cameras
+**Symptoms:** `rpicam-hello --list-cameras` shows no cameras
 
 **Solutions:**
 1. Check ribbon cable is fully inserted at both ends
@@ -554,7 +691,7 @@ You should see stream information (resolution, codec, etc.) if working.
 ### Camera Stream Won't Start
 
 **Solutions:**
-1. Test camera with `libcamera-still -o test.jpg`
+1. Test camera with `rpicam-still -o test.jpg`
 2. Check mediamtx is running: `systemctl status mediamtx`
 3. Check for port conflicts: `netstat -tlnp | grep 8554`
 4. Review logs: `journalctl -u parcelguard-camera -f`
@@ -811,10 +948,10 @@ Power on and SSH back in:
 ssh dan@parcelguard-cam1.local
 
 # Test camera is detected
-libcamera-hello --list-cameras
+rpicam-hello --list-cameras
 
 # Take a test photo
-libcamera-still -o test.jpg
+rpicam-still -o test.jpg
 ```
 
 If the camera is detected and takes photos, it's working correctly.
