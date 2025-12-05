@@ -1,0 +1,107 @@
+# ParcelGuard Frigate Configuration
+# Optimized for Raspberry Pi 4 (4GB) with SD card storage
+
+mqtt:
+  enabled: false
+
+database:
+  path: /media/frigate/frigate.db
+
+logger:
+  default: warning
+  logs:
+    frigate.event: info
+
+cameras:
+  cam1:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://parcelguard-cam1.local:8554/stream
+          roles:
+            - detect
+            - record
+    detect:
+      enabled: true
+      width: 1280
+      height: 720
+      fps: 5
+    record:
+      enabled: true
+      retain:
+        days: 7
+        mode: motion
+      events:
+        pre_capture: 3
+        post_capture: 5
+        retain:
+          default: 14
+    snapshots:
+      enabled: true
+      retain:
+        default: 14
+    motion:
+      threshold: 30
+      contour_area: 100
+
+  cam2:
+    enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://parcelguard-cam2.local:8554/stream
+          roles:
+            - detect
+            - record
+    detect:
+      enabled: true
+      width: 1280
+      height: 720
+      fps: 5
+    record:
+      enabled: true
+      retain:
+        days: 7
+        mode: motion
+      events:
+        pre_capture: 3
+        post_capture: 5
+        retain:
+          default: 14
+    snapshots:
+      enabled: true
+      retain:
+        default: 14
+    motion:
+      threshold: 30
+      contour_area: 100
+
+detectors:
+  cpu1:
+    type: cpu
+    num_threads: 2
+
+model:
+  width: 320
+  height: 320
+
+record:
+  enabled: true
+  retain:
+    days: 7
+    mode: motion
+  events:
+    pre_capture: 3
+    post_capture: 5
+
+objects:
+  track:
+    - person
+  filters:
+    person:
+      min_score: 0.5
+      threshold: 0.7
+
+go2rtc:
+  streams:
+    cam1: rtsp://parcelguard-cam1.local:8554/stream
+    cam2: rtsp://parcelguard-cam2.local:8554/stream

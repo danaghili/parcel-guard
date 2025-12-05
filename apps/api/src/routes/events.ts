@@ -72,6 +72,13 @@ export const eventsRoutes: FastifyPluginAsync = async (
       try {
         const frigateEvent = parseFrigateEvent(payload)
 
+        // Map Frigate camera names to database IDs
+        const CAMERA_ID_MAP: Record<string, string> = {
+          'cam1': 'camera-mit2al8i',
+          'cam2': 'camera-mit2a51p',
+        }
+        frigateEvent.cameraId = CAMERA_ID_MAP[frigateEvent.cameraId] || frigateEvent.cameraId
+
         server.log.info(
           { eventId: frigateEvent.eventId, type: frigateEvent.type, camera: frigateEvent.cameraId },
           'Received Frigate event',
