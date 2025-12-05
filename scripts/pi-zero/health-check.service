@@ -1,0 +1,16 @@
+[Unit]
+Description=ParcelGuard Camera Health Check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/parcelguard-health-check.sh
+Restart=always
+RestartSec=10
+Environment=HUB_URL=http://ParcelGuard.local:3000
+Environment=CAMERA_ID=CHANGE_ME
+Environment=INTERVAL=30
+
+[Install]
+WantedBy=multi-user.target

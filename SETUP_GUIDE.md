@@ -574,11 +574,92 @@ sudo systemctl status mediamtx
 sudo systemctl status camera-stream
 ```
 
-### Step 7.9: Repeat for Camera 2
+### Step 7.9: Set Up Health Checks
 
-Repeat steps 7.1-7.8 for your second camera, using:
+The cameras need to send health checks to the hub so they show as "Online" in the app.
+
+**Create the health check script:**
+
+```bash
+sudo nano /usr/local/bin/parcelguard-health-check.sh
+```
+
+Type this exactly:
+
+```bash
+#!/bin/bash
+HUB_URL="${HUB_URL:-http://ParcelGuard.local:3000}"
+CAMERA_ID="${CAMERA_ID:-}"
+INTERVAL="${INTERVAL:-30}"
+
+if [ -z "$CAMERA_ID" ]; then
+    echo "Error: CAMERA_ID must be set"
+    exit 1
+fi
+
+while true; do
+    TEMP_RAW=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "0")
+    TEMP=$(echo "scale=1; $TEMP_RAW / 1000" | bc)
+    UPTIME=$(uptime -p 2>/dev/null | sed 's/up //' || echo "unknown")
+    IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "unknown")
+
+    curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -d "{\"temperature\": $TEMP, \"uptime\": \"$UPTIME\", \"ip\": \"$IP\"}" \
+        "$HUB_URL/api/cameras/$CAMERA_ID/health" > /dev/null 2>&1
+
+    sleep "$INTERVAL"
+done
+```
+
+Save and make executable:
+
+```bash
+sudo chmod +x /usr/local/bin/parcelguard-health-check.sh
+```
+
+**Create the systemd service:**
+
+```bash
+sudo nano /etc/systemd/system/parcelguard-health.service
+```
+
+```ini
+[Unit]
+Description=ParcelGuard Camera Health Check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/parcelguard-health-check.sh
+Restart=always
+RestartSec=10
+Environment=HUB_URL=http://ParcelGuard.local:3000
+Environment=CAMERA_ID=YOUR_CAMERA_ID_HERE
+Environment=INTERVAL=30
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> **Important:** Replace `YOUR_CAMERA_ID_HERE` with your actual camera ID from the database. You can find it by running on the hub: `sqlite3 /mnt/storage/parcelguard/data/parcelguard.db "SELECT id, name FROM cameras;"`
+
+Save, then enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable parcelguard-health
+sudo systemctl start parcelguard-health
+sudo systemctl status parcelguard-health
+```
+
+### Step 7.10: Repeat for Camera 2
+
+Repeat steps 7.1-7.9 for your second camera, using:
 - Hostname: `parcelguard-cam2`
 - SD card labeled "CAM2"
+- Different CAMERA_ID in the health check service
 
 ---
 

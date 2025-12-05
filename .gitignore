@@ -39,3 +39,6 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# API data (local storage)
+apps/api/data/
