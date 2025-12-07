@@ -42,10 +42,10 @@ print_error() {
 print_step "Updating system packages..."
 sudo apt update && sudo apt upgrade -y
 
-# Step 2: Install Node.js 20
-print_step "Installing Node.js 20..."
+# Step 2: Install Node.js 20 and other dependencies
+print_step "Installing Node.js 20 and dependencies..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs git nginx
+sudo apt install -y nodejs git nginx motion
 
 # Verify Node.js
 node_version=$(node --version)
@@ -55,7 +55,14 @@ echo "Node.js version: $node_version"
 print_step "Disabling WiFi power management..."
 sudo iw wlan0 set power_save off || print_warn "Could not disable WiFi power save"
 
-# Make it permanent
+# Make it permanent via NetworkManager
+sudo mkdir -p /etc/NetworkManager/conf.d
+sudo tee /etc/NetworkManager/conf.d/wifi-powersave.conf > /dev/null << 'EOF'
+[connection]
+wifi.powersave = 2
+EOF
+
+# Also via rc.local as backup
 echo '#!/bin/bash
 iw wlan0 set power_save off
 exit 0' | sudo tee /etc/rc.local > /dev/null
@@ -97,20 +104,22 @@ print_step "Configuring API..."
 cd ~/parcel-guard/apps/api
 cat > .env << 'EOF'
 DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db
+CLIPS_PATH=/mnt/storage/parcelguard/clips
+THUMBNAILS_PATH=/mnt/storage/parcelguard/thumbnails
 PORT=3000
 NODE_ENV=production
 EOF
 
 # Step 10: Seed Database
 print_step "Seeding database..."
-npx tsx src/db/seed.ts
+DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db npx tsx src/db/seed.ts
 
 # Step 11: Set Default PIN
 print_step "Setting default PIN (1234)..."
-npx tsx -e "
+DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db npx tsx -e "
 import Database from 'better-sqlite3';
 import bcrypt from 'bcrypt';
-const db = new Database(process.env.DATABASE_PATH || '/mnt/storage/parcelguard/data/parcelguard.db');
+const db = new Database(process.env.DATABASE_PATH);
 const hash = bcrypt.hashSync('1234', 10);
 db.prepare(\"INSERT OR REPLACE INTO settings (key, value) VALUES ('pin', ?)\").run(hash);
 console.log('PIN set to 1234');
@@ -139,6 +148,8 @@ User=dan
 WorkingDirectory=/home/dan/parcel-guard/apps/api
 Environment=NODE_ENV=production
 Environment=DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db
+Environment=CLIPS_PATH=/mnt/storage/parcelguard/clips
+Environment=THUMBNAILS_PATH=/mnt/storage/parcelguard/thumbnails
 Environment=PORT=3000
 ExecStart=/usr/bin/npx tsx src/index.ts
 Restart=always
@@ -192,7 +203,7 @@ tar -xzf mediamtx_v1.9.3_linux_arm64v8.tar.gz
 sudo mv mediamtx /usr/local/bin/
 rm mediamtx_v1.9.3_linux_arm64v8.tar.gz
 
-# Step 16: Configure MediaMTX
+# Step 16: Configure MediaMTX (with TCP transport to avoid packet loss)
 print_step "Configuring MediaMTX..."
 cat > ~/mediamtx.yml << 'EOF'
 hlsAddress: :8888
@@ -200,8 +211,10 @@ hlsAddress: :8888
 paths:
   cam1:
     source: rtsp://192.168.1.133:8554/stream
+    rtspTransport: tcp
   cam2:
     source: rtsp://192.168.1.183:8554/stream
+    rtspTransport: tcp
 EOF
 
 # Step 17: Create MediaMTX Service
@@ -226,7 +239,109 @@ sudo systemctl daemon-reload
 sudo systemctl enable mediamtx
 sudo systemctl start mediamtx
 
-# Step 18: Verify Services
+# Step 18: Configure Motion
+print_step "Configuring Motion..."
+
+# Main motion.conf
+sudo tee /etc/motion/motion.conf > /dev/null << 'EOF'
+daemon off
+log_level 6
+
+webcontrol_port 8080
+webcontrol_localhost off
+
+camera /etc/motion/camera1.conf
+camera /etc/motion/camera2.conf
+EOF
+
+# Camera 1 config
+sudo tee /etc/motion/camera1.conf > /dev/null << 'EOF'
+camera_name cam1
+netcam_url rtsp://192.168.1.133:8554/stream
+
+threshold 1500
+minimum_motion_frames 3
+event_gap 60
+
+movie_output on
+movie_max_time 60
+movie_quality 75
+movie_codec mp4
+movie_filename /mnt/storage/parcelguard/clips/cam1/%Y%m%d_%H%M%S
+
+picture_output first
+picture_filename /mnt/storage/parcelguard/thumbnails/cam1_%Y%m%d_%H%M%S
+
+on_event_start /home/dan/parcel-guard/scripts/motion-event.sh start cam1 %v
+on_event_end /home/dan/parcel-guard/scripts/motion-event.sh end cam1 %v
+
+framerate 5
+width 640
+height 480
+EOF
+
+# Camera 2 config
+sudo tee /etc/motion/camera2.conf > /dev/null << 'EOF'
+camera_name cam2
+netcam_url rtsp://192.168.1.183:8554/stream
+
+threshold 1500
+minimum_motion_frames 3
+event_gap 60
+
+movie_output on
+movie_max_time 60
+movie_quality 75
+movie_codec mp4
+movie_filename /mnt/storage/parcelguard/clips/cam2/%Y%m%d_%H%M%S
+
+picture_output first
+picture_filename /mnt/storage/parcelguard/thumbnails/cam2_%Y%m%d_%H%M%S
+
+on_event_start /home/dan/parcel-guard/scripts/motion-event.sh start cam2 %v
+on_event_end /home/dan/parcel-guard/scripts/motion-event.sh end cam2 %v
+
+framerate 5
+width 640
+height 480
+EOF
+
+# Step 19: Create Motion Event Script
+print_step "Creating motion event webhook script..."
+cat > ~/parcel-guard/scripts/motion-event.sh << 'EOF'
+#!/bin/bash
+EVENT_TYPE=$1
+CAMERA_ID=$2
+EVENT_ID=$3
+TIMESTAMP=$(date +%s)
+
+API_URL="http://localhost:3000/api"
+
+if [ "$EVENT_TYPE" = "start" ]; then
+    curl -s -X POST "$API_URL/motion/events" \
+        -H "Content-Type: application/json" \
+        -d "{\"cameraId\": \"$CAMERA_ID\", \"eventId\": \"$EVENT_ID\", \"type\": \"start\", \"timestamp\": $TIMESTAMP}"
+elif [ "$EVENT_TYPE" = "end" ]; then
+    curl -s -X POST "$API_URL/motion/events" \
+        -H "Content-Type: application/json" \
+        -d "{\"cameraId\": \"$CAMERA_ID\", \"eventId\": \"$EVENT_ID\", \"type\": \"end\", \"timestamp\": $TIMESTAMP}"
+fi
+EOF
+chmod +x ~/parcel-guard/scripts/motion-event.sh
+
+# Step 20: Set Motion Storage Permissions
+print_step "Setting storage permissions for Motion..."
+sudo chown -R motion:motion /mnt/storage/parcelguard/clips
+sudo chown -R motion:motion /mnt/storage/parcelguard/thumbnails
+sudo chmod -R 755 /mnt/storage/parcelguard/clips
+sudo chmod -R 755 /mnt/storage/parcelguard/thumbnails
+
+# Step 21: Enable and Start Motion
+print_step "Starting Motion service..."
+sudo systemctl enable motion
+sudo systemctl start motion
+
+# Step 22: Verify Services
 print_step "Verifying services..."
 echo ""
 echo "Service Status:"
@@ -234,6 +349,7 @@ echo "---------------"
 systemctl is-active parcelguard-api && echo "parcelguard-api: RUNNING" || echo "parcelguard-api: FAILED"
 systemctl is-active nginx && echo "nginx: RUNNING" || echo "nginx: FAILED"
 systemctl is-active mediamtx && echo "mediamtx: RUNNING" || echo "mediamtx: FAILED"
+systemctl is-active motion && echo "motion: RUNNING" || echo "motion: FAILED"
 
 echo ""
 echo "=========================================="
@@ -247,6 +363,11 @@ echo "Camera IPs configured:"
 echo "  - cam1: 192.168.1.133"
 echo "  - cam2: 192.168.1.183"
 echo ""
-echo "If camera IPs have changed, edit ~/mediamtx.yml and restart:"
-echo "  sudo systemctl restart mediamtx"
+echo "If camera IPs have changed, update these files and restart:"
+echo "  ~/mediamtx.yml"
+echo "  /etc/motion/camera1.conf"
+echo "  /etc/motion/camera2.conf"
+echo ""
+echo "Then restart services:"
+echo "  sudo systemctl restart mediamtx motion"
 echo ""
