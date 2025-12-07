@@ -341,7 +341,12 @@ print_step "Starting Motion service..."
 sudo systemctl enable motion
 sudo systemctl start motion
 
-# Step 22: Verify Services
+# Step 22: Install Tailscale
+print_step "Installing Tailscale for remote access..."
+curl -fsSL https://tailscale.com/install.sh | sh
+print_warn "Run 'sudo tailscale up' after setup to authenticate"
+
+# Step 23: Verify Services
 print_step "Verifying services..."
 echo ""
 echo "Service Status:"
@@ -370,4 +375,10 @@ echo "  /etc/motion/camera2.conf"
 echo ""
 echo "Then restart services:"
 echo "  sudo systemctl restart mediamtx motion"
+echo ""
+echo "NEXT STEP: Authenticate Tailscale for remote access:"
+echo "  sudo tailscale up"
+echo ""
+echo "After authenticating, get your Tailscale IP:"
+echo "  tailscale ip -4"
 echo ""

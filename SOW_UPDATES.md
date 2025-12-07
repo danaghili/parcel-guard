@@ -170,12 +170,12 @@ This file tracks changes and additions that need to be incorporated into the Sco
 
 When updating SOW, address:
 
-- [ ] Replace Frigate → Motion throughout
-- [ ] Add Tailscale to architecture and setup
+- [x] Replace Frigate → Motion throughout
+- [x] Add Tailscale to architecture and setup
 - [ ] Add multi-network WiFi to camera setup phase
-- [ ] Add setup scripts to development phases
+- [x] Add setup scripts to development phases
 - [ ] Update camera recommendations (ZeroCam)
-- [ ] Clarify SSD as optional for initial setup
+- [x] Clarify SSD as optional for initial setup
 - [ ] Add Reolink/RTSP integration to future roadmap
 - [ ] Add Nest/SimpliSafe to "Out of Scope" with explanation
 - [ ] Add DIY PTZ to future roadmap
@@ -183,5 +183,41 @@ When updating SOW, address:
 
 ---
 
+## Implementation Status (December 7, 2024)
+
+### Completed Items
+
+**System is fully operational with:**
+
+1. **Hub (Pi 4)**
+   - Hostname: `parcelguard-hub`
+   - Local IP: `192.168.1.205`
+   - Tailscale IP: `100.72.88.127`
+   - Services: API, Nginx, MediaMTX, Motion
+
+2. **Camera 1 (Pi Zero 2W)**
+   - Hostname: `parcelguard-cam1`
+   - Local IP: `192.168.1.133`
+   - Tailscale IP: `100.120.125.42`
+   - Streaming: 1080p/15fps @ 2Mbps H.264
+
+3. **Camera 2 (Pi Zero 2W)**
+   - Hostname: `parcelguard-cam2`
+   - Local IP: `192.168.1.183`
+   - Tailscale IP: `100.69.12.33`
+   - Streaming: 1080p/15fps @ 2Mbps H.264
+
+**Key Technical Decisions:**
+- TCP transport for RTSP (eliminated packet loss over WiFi)
+- Motion detection via Motion daemon (not Frigate)
+- Tailscale VPN for cross-network access
+- H.264 High profile with 2Mbps bitrate cap
+
+**Setup Scripts Created:**
+- `scripts/pi-hub/recover-hub.sh` - Full hub recovery (23 steps)
+- `scripts/pi-zero/setup-camera.sh` - Camera setup (12 steps)
+
+---
+
 *Created: Session notes from initial implementation*
-*To be merged with current SOW when provided*
+*Updated: December 7, 2024 - System operational*

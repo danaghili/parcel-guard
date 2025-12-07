@@ -16,11 +16,16 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 
 ## Current Status (December 2024)
 
-**Hub Status:** Requires reimaging after Frigate crash
-**Cameras:** Both cam1 (192.168.1.133) and cam2 (192.168.1.183) are streaming via mediamtx
-**Software:** Phases 0-6A complete, Phase 7A in progress
+**Hub Status:** ✅ Fully operational
+**Cameras:** Both cameras streaming 1080p/15fps via mediamtx with TCP transport
+**Software:** All phases complete through H5
 
-**Key Decision:** Replace Frigate with Motion (lightweight motion detection) due to Pi 4 resource constraints.
+**Tailscale IPs (for cross-network access):**
+- Hub: `100.72.88.127`
+- Cam1: `100.120.125.42`
+- Cam2: `100.69.12.33`
+
+**Key Decision:** Replaced Frigate with Motion (lightweight motion detection) due to Pi 4 resource constraints.
 
 ---
 
@@ -41,9 +46,9 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 7B | Polish & Optimisation (Post-Hardware) | Real stream testing, final validation | Phase 7A + Hub | ⬜ Not started |
 | **H1** | **Hub Recovery** | **Reimage Pi 4, basic setup** | None | ✅ Complete |
 | **H2** | **Hub Services** | **API, web app, nginx deployment** | H1 | ✅ Complete |
-| **H3** | **Motion Integration** | **Motion daemon, event forwarding** | H2 | ⬜ Not started |
-| **H4** | **Remote Access** | **Tailscale VPN setup** | H2 | ⬜ Not started |
-| **H5** | **Setup Scripts** | **Automated setup for hub and cameras** | H3, H4 | ⬜ Not started |
+| **H3** | **Motion Integration** | **Motion daemon, event forwarding** | H2 | ✅ Complete |
+| **H4** | **Remote Access** | **Tailscale VPN setup** | H2 | ✅ Complete |
+| **H5** | **Setup Scripts** | **Automated setup for hub and cameras** | H3, H4 | ✅ Complete |
 
 ---
 
@@ -1227,7 +1232,7 @@ sudo systemctl restart nginx
 
 ---
 
-## Phase H3: Motion Integration ⬜
+## Phase H3: Motion Integration ✅
 
 ### Objective
 Replace Frigate with Motion (lightweight motion detection daemon) and configure event forwarding.
@@ -1380,7 +1385,7 @@ sudo systemctl status motion
 
 ---
 
-## Phase H4: Remote Access ⬜
+## Phase H4: Remote Access ✅
 
 ### Objective
 Configure Tailscale VPN for secure remote access to the system.
@@ -1445,7 +1450,7 @@ sudo tailscale up
 
 ---
 
-## Phase H5: Setup Scripts ⬜
+## Phase H5: Setup Scripts ✅
 
 ### Objective
 Create automated setup scripts for repeatable hub and camera configuration.
@@ -1640,11 +1645,11 @@ COMPLETED (Pre-Hardware):
 Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3A ─► Phase 4 ─► Phase 5 ─► Phase 6A ─► Phase 7A (in progress)
    ✅         ✅         ✅          ✅          ✅         ✅          ✅            🔄
 
-CURRENT FOCUS (Hardware Deployment):
+COMPLETED (Hardware Deployment):
 H1 ────────► H2 ────────► H3 ────────► H4 ────────► H5
 Hub          Hub          Motion       Tailscale    Setup
 Recovery     Services     Integration  VPN          Scripts
-   ⬜           ⬜            ⬜            ⬜           ⬜
+   ✅           ✅            ✅            ✅           ✅
 
 THEN (Post-Hardware Polish):
 Phase 3B ─► Phase 6B ─► Phase 7B ─► Done
@@ -1733,9 +1738,10 @@ While waiting for hub recovery:
 
 ---
 
-*Last Updated: December 6, 2024*
-*Version: 2.0.0*
+*Last Updated: December 7, 2024*
+*Version: 2.1.0*
 
 **Changelog:**
+- v2.1.0: All hardware phases (H1-H5) complete. System fully operational with Motion detection, Tailscale VPN, and automated setup scripts.
 - v2.0.0: Major revision - Added hub recovery phases (H1-H5), replaced Frigate with Motion, added Tailscale for remote access
 - v1.6.0: Phase 7A in progress, all pre-hardware phases complete

@@ -218,7 +218,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable health-check
 sudo systemctl start health-check
 
-# Step 11: Verify Services
+# Step 11: Install Tailscale
+print_step "Installing Tailscale for cross-network access..."
+curl -fsSL https://tailscale.com/install.sh | sh
+print_warn "Run 'sudo tailscale up' after setup to authenticate"
+
+# Step 12: Verify Services
 print_step "Verifying services..."
 echo ""
 echo "Service Status:"
@@ -244,4 +249,12 @@ echo "  $IP"
 echo ""
 echo "Test the stream with:"
 echo "  ffplay rtsp://$IP:8554/stream"
+echo ""
+echo "NEXT STEP: Authenticate Tailscale for cross-network access:"
+echo "  sudo tailscale up"
+echo ""
+echo "After authenticating, get your Tailscale IP:"
+echo "  tailscale ip -4"
+echo ""
+echo "Use the Tailscale IP in hub configs for cross-network operation."
 echo ""
