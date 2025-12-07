@@ -387,10 +387,11 @@ export const eventsRoutes: FastifyPluginAsync = async (
 
   /**
    * Get event video clip
+   * Note: No auth required - event IDs are random UUIDs and videos
+   * need to be loadable via <video> tags which can't send auth headers
    */
   server.get<{ Params: EventParams }>(
     '/events/:id/video',
-    { preHandler: requireAuth },
     async (request, reply) => {
       const { id } = request.params
       const event = getEventById(id)
