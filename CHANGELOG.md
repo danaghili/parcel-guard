@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2024-12-07
+
+### Added
+- Multi-User Authentication System
+  - Users table with username, PIN hash, display name, admin flag, enabled status
+  - Session-based auth now linked to specific users
+  - User management API endpoints:
+    - `GET /api/users` - List all users (admin only)
+    - `POST /api/users` - Create user (admin only)
+    - `GET /api/users/:id` - Get user details
+    - `PUT /api/users/:id` - Update user
+    - `DELETE /api/users/:id` - Disable user (admin only)
+    - `PUT /api/users/:id/pin` - Change PIN
+  - `requireAdmin` middleware for admin-only routes
+  - User Management UI (`/users` page, admin only)
+    - Create, edit, delete users
+    - Reset user PINs
+    - Enable/disable accounts
+  - Updated Login page with username + PIN fields
+  - Default admin user: `admin` / `2808`
+- Public Access via Tailscale Funnel
+  - HTTPS access from anywhere without port forwarding
+  - No app installation required for visitors
+
+### Changed
+- Login now requires username + PIN instead of PIN only
+- AuthContext includes user info (id, username, displayName, isAdmin)
+- Settings page shows "User Management" link for admins
+- PIN change now uses user-based API (`/api/users/:id/pin`)
+
+### Database
+- Migration `002_add_users.sql` - Creates users table, adds userId to sessions
+
 ## [0.8.0] - 2024-12-04
 
 ### Added

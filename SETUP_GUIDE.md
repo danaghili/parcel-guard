@@ -697,11 +697,12 @@ You should see stream information (resolution, codec, etc.) if working.
 2. Check that an event is recorded
 3. Verify you can play back the recorded clip
 
-### Step 8.5: Test Remote Access (if configured)
+### Step 8.5: Test Remote Access (Tailscale Funnel)
 
 1. Disconnect your phone from WiFi (use mobile data)
-2. Navigate to your Cloudflare Tunnel URL
+2. Navigate to your Tailscale Funnel URL (e.g., `https://parcelguard-hub.tail1234.ts.net`)
 3. Verify you can access the system remotely
+4. Login with username `admin` and PIN `2808`
 
 ---
 
@@ -853,13 +854,38 @@ sudo systemctl restart parcelguard-api
 
 Once your system is assembled and running:
 
-1. Set up static IP addresses (see DEPLOYMENT_SPEC.md Appendix)
-2. Configure Cloudflare Tunnel for remote access
+1. Set up Tailscale Funnel for public HTTPS access (see below)
+2. Create user accounts for family members
 3. Set up automated backups
-4. Fine-tune motion detection zones in Frigate
+4. Fine-tune motion detection sensitivity
 5. Install upgrades (SSD, new cameras) - see [Section 11: Upgrades](#11-upgrades)
 
 For detailed configuration, refer to [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md).
+
+### Setting Up Tailscale Funnel (Public Access)
+
+Tailscale Funnel allows anyone to access ParcelGuard via HTTPS without installing any apps.
+
+```bash
+# On the hub, enable Funnel for port 80
+tailscale funnel 80
+```
+
+This gives you a public URL like `https://parcelguard-hub.tail1234.ts.net` that works from anywhere.
+
+To make it persistent across reboots:
+
+```bash
+# Run in background
+tailscale funnel --bg 80
+```
+
+### Creating User Accounts
+
+1. Login as admin (username: `admin`, PIN: `2808`)
+2. Go to Settings → User Management
+3. Click "Add User" to create accounts for family members
+4. Each user gets their own username and PIN
 
 ---
 

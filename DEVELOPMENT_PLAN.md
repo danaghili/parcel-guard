@@ -18,14 +18,22 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 
 **Hub Status:** ✅ Fully operational
 **Cameras:** Both cameras streaming 1080p/15fps via mediamtx with TCP transport
-**Software:** All phases complete through H5
+**Software:** Version 0.9.0 - Multi-user authentication with public access
+
+**Access:**
+- **Local:** http://parcelguard-hub.local
+- **Public (Tailscale Funnel):** https://parcelguard-hub.tail1234.ts.net (check your actual URL)
+- **Default Login:** username `admin`, PIN `2808`
 
 **Tailscale IPs (for cross-network access):**
 - Hub: `100.72.88.127`
 - Cam1: `100.120.125.42`
 - Cam2: `100.69.12.33`
 
-**Key Decision:** Replaced Frigate with Motion (lightweight motion detection) due to Pi 4 resource constraints.
+**Key Decisions:**
+- Replaced Frigate with Motion (lightweight motion detection) due to Pi 4 resource constraints
+- Added multi-user authentication (v0.9.0) for shared household access
+- Using Tailscale Funnel for public HTTPS access without port forwarding
 
 ---
 
@@ -49,6 +57,8 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | **H3** | **Motion Integration** | **Motion daemon, event forwarding** | H2 | ✅ Complete |
 | **H4** | **Remote Access** | **Tailscale VPN setup** | H2 | ✅ Complete |
 | **H5** | **Setup Scripts** | **Automated setup for hub and cameras** | H3, H4 | ✅ Complete |
+| **H6** | **Multi-User Auth** | **Username/PIN login, user management** | H2 | ✅ Complete |
+| **H7** | **Public Access** | **Tailscale Funnel for HTTPS access** | H4 | ✅ Complete |
 
 ---
 
@@ -1634,6 +1644,92 @@ network={
 
 ---
 
+## Phase H6: Multi-User Authentication ✅
+
+### Objective
+Replace single-PIN authentication with multi-user support (username + PIN).
+
+### Prerequisites
+- Phase H2 complete
+- Database migrations working
+
+### Tasks
+
+#### H6.1 Database Migration
+- [x] Create `002_add_users.sql` migration
+- [x] Create users table with username, pinHash, displayName, isAdmin, enabled
+- [x] Add userId column to sessions table
+- [x] Migrate existing PIN to admin user
+
+#### H6.2 Backend User Service
+- [x] Create user service (`apps/api/src/services/users.ts`)
+- [x] User CRUD operations
+- [x] PIN validation with bcrypt
+- [x] Admin-only route middleware
+
+#### H6.3 Backend API Routes
+- [x] `GET /api/users` - List all users (admin only)
+- [x] `POST /api/users` - Create user (admin only)
+- [x] `GET /api/users/:id` - Get user details
+- [x] `PUT /api/users/:id` - Update user
+- [x] `DELETE /api/users/:id` - Disable user (admin only)
+- [x] `PUT /api/users/:id/pin` - Change PIN
+- [x] Update login to accept username + PIN
+
+#### H6.4 Frontend Updates
+- [x] Update Login page with username field
+- [x] Update AuthContext with user info
+- [x] Create User Management page (`/users`)
+- [x] Update Settings page with user management link
+
+#### H6.5 Testing
+- [x] Update E2E tests for new login flow
+- [x] Add user management tests
+
+### Deliverables
+- Multi-user login with username + PIN
+- Admin user management UI
+- Default admin user (admin/2808)
+
+### Acceptance Criteria
+- [x] Login requires username + PIN
+- [x] Admin can create/edit/delete users
+- [x] Non-admin users can change their own PIN
+- [x] Sessions linked to specific users
+
+---
+
+## Phase H7: Public Access (Tailscale Funnel) ✅
+
+### Objective
+Enable public HTTPS access to ParcelGuard without port forwarding or custom domain.
+
+### Prerequisites
+- Phase H4 complete (Tailscale installed)
+
+### Tasks
+
+#### H7.1 Enable Tailscale Funnel
+- [x] Run `tailscale funnel --bg 80` on hub
+- [x] Accept Tailscale Funnel terms
+- [x] Verify public URL works
+
+#### H7.2 Configuration
+- [x] Make Funnel persistent with `--bg` flag
+- [x] Document public URL
+
+### Deliverables
+- Public HTTPS URL for ParcelGuard
+- No port forwarding required
+- No custom domain needed
+
+### Acceptance Criteria
+- [x] Can access ParcelGuard from any network via public URL
+- [x] HTTPS certificate automatically managed by Tailscale
+- [x] Funnel survives hub reboots
+
+---
+
 ## Implementation Order
 
 ### Current Sequence (Post-Recovery)
@@ -1646,10 +1742,10 @@ Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3A ─► Phase 4 ─► Phas
    ✅         ✅         ✅          ✅          ✅         ✅          ✅            🔄
 
 COMPLETED (Hardware Deployment):
-H1 ────────► H2 ────────► H3 ────────► H4 ────────► H5
-Hub          Hub          Motion       Tailscale    Setup
-Recovery     Services     Integration  VPN          Scripts
-   ✅           ✅            ✅            ✅           ✅
+H1 ────────► H2 ────────► H3 ────────► H4 ────────► H5 ────────► H6 ────────► H7
+Hub          Hub          Motion       Tailscale    Setup        Multi-User   Public
+Recovery     Services     Integration  VPN          Scripts      Auth         Access
+   ✅           ✅            ✅            ✅           ✅            ✅           ✅
 
 THEN (Post-Hardware Polish):
 Phase 3B ─► Phase 6B ─► Phase 7B ─► Done
@@ -1660,14 +1756,21 @@ Tuning      Zones        Validation
 
 ### Recommended Next Steps
 
-1. **H1: Hub Recovery** - Reimage SD card, install OS and dependencies
-2. **H2: Hub Services** - Deploy API and web app
-3. **H3: Motion Integration** - Configure Motion daemon (replacing Frigate)
-4. **H4: Remote Access** - Set up Tailscale VPN
-5. **H5: Setup Scripts** - Automate for future recovery/deployment
-6. **Phase 3B** - Tune motion detection sensitivity
-7. **Phase 6B** - Add motion zone editor UI
-8. **Phase 7B** - Final hardware validation and production sign-off
+All hardware deployment phases are complete. Remaining work:
+
+1. **Phase 3B** - Tune motion detection sensitivity with real cameras
+2. **Phase 6B** - Add motion zone editor UI with live preview
+3. **Phase 7B** - Final hardware validation and production sign-off
+
+### Completed Hardware Phases
+
+1. ✅ **H1: Hub Recovery** - Reimaged SD card, installed OS and dependencies
+2. ✅ **H2: Hub Services** - Deployed API and web app
+3. ✅ **H3: Motion Integration** - Configured Motion daemon (replacing Frigate)
+4. ✅ **H4: Remote Access** - Set up Tailscale VPN
+5. ✅ **H5: Setup Scripts** - Automated setup for future recovery/deployment
+6. ✅ **H6: Multi-User Auth** - Username/PIN login with user management
+7. ✅ **H7: Public Access** - Tailscale Funnel for public HTTPS access
 
 ### Hardware-Independent Development Path
 
@@ -1684,7 +1787,7 @@ Phases 0-7A were developed without physical camera hardware:
 | 6B | **Hub Required** | Motion zone editor needs live preview |
 | 7A | No | 🔄 In Progress - Performance, PWA, accessibility |
 | 7B | **Hub Required** | Real stream testing, final validation |
-| H1-H5 | **Hub Required** | Hardware deployment phases |
+| H1-H7 | **Hub Required** | ✅ All hardware deployment phases complete |
 
 ### Key Change: Frigate → Motion
 
@@ -1739,9 +1842,10 @@ While waiting for hub recovery:
 ---
 
 *Last Updated: December 7, 2024*
-*Version: 2.1.0*
+*Version: 2.2.0*
 
 **Changelog:**
+- v2.2.0: Added H6 (Multi-User Auth) and H7 (Tailscale Funnel). Version 0.9.0 deployed with username/PIN login and public HTTPS access.
 - v2.1.0: All hardware phases (H1-H5) complete. System fully operational with Motion detection, Tailscale VPN, and automated setup scripts.
 - v2.0.0: Major revision - Added hub recovery phases (H1-H5), replaced Frigate with Motion, added Tailscale for remote access
 - v1.6.0: Phase 7A in progress, all pre-hardware phases complete

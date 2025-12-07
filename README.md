@@ -2,12 +2,22 @@
 
 Multi-camera security system for monitoring communal areas in residential buildings, focused on detecting and recording parcel theft.
 
+## Current Status
+
+**Version 0.9.0** - Multi-user authentication with public access via Tailscale Funnel.
+
+### Default Login
+- **Username:** `admin`
+- **PIN:** `2808`
+
 ## Tech Stack
 
 - **Frontend:** React PWA + TypeScript + Tailwind CSS
 - **Backend:** Node.js + Fastify + TypeScript
 - **Database:** SQLite
-- **Video Processing:** Frigate
+- **Video Processing:** Motion (with Frigate support)
+- **Streaming:** MediaMTX (RTSP to HLS)
+- **VPN/Tunnel:** Tailscale + Tailscale Funnel
 - **Testing:** Vitest (unit), Playwright (E2E)
 
 ## Project Structure
@@ -92,8 +102,14 @@ npm run typecheck
 npm run build
 ```
 
+## Hardware
+
+- **Hub:** Raspberry Pi 4 (4GB) running on home WiFi
+- **Cameras:** Raspberry Pi Zero 2W with Camera Module 3 (on 4G via Tailscale)
+
 ## Documentation
 
+- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Hardware setup and deployment
 - [CLAUDE.md](./CLAUDE.md) - Development standards
 - [HARDWARE_SPEC.md](./HARDWARE_SPEC.md) - Hardware architecture
 - [SCOPE_OF_WORK.md](./SCOPE_OF_WORK.md) - Feature specifications
