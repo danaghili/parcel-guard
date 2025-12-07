@@ -48,9 +48,121 @@ interface BulkDeleteBody {
   ids: string[]
 }
 
+interface MotionEventBody {
+  cameraId: string
+  eventId: string
+  type: 'start' | 'end'
+  timestamp: number
+}
+
 export const eventsRoutes: FastifyPluginAsync = async (
   server: FastifyInstance,
 ): Promise<void> => {
+  /**
+   * Motion daemon webhook endpoint
+   * Receives events from Motion when motion is detected
+   * No auth required - Motion calls this internally
+   */
+  server.post<{ Body: MotionEventBody }>(
+    '/motion/events',
+    async (request, reply) => {
+      const { cameraId, eventId, type, timestamp } = request.body
+
+      if (!cameraId || !eventId || !type) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'Missing required fields: cameraId, eventId, type',
+        })
+      }
+
+      server.log.info(
+        { eventId, type, camera: cameraId },
+        'Received Motion event',
+      )
+
+      try {
+        if (type === 'start') {
+          // Create new event
+          const event = createEvent({
+            id: `motion-${cameraId}-${eventId}`,
+            cameraId,
+            timestamp: timestamp || Math.floor(Date.now() / 1000),
+            duration: null,
+            thumbnailPath: `${cameraId}_${new Date(timestamp * 1000).toISOString().replace(/[-:]/g, '').slice(0, 15)}.jpg`,
+            videoPath: null,
+          })
+
+          // Trigger notification (non-blocking)
+          const camera = getCameraById(cameraId)
+          if (camera) {
+            sendMotionAlert(
+              {
+                id: event.id,
+                cameraId: event.cameraId,
+                timestamp: event.timestamp,
+                thumbnailPath: event.thumbnailPath,
+              },
+              camera,
+            )
+              .then((result) => {
+                if (result.sent) {
+                  server.log.info({ eventId: event.id, camera: camera.name }, 'Notification sent')
+                } else {
+                  server.log.debug(
+                    { eventId: event.id, reason: result.reason },
+                    'Notification not sent',
+                  )
+                }
+              })
+              .catch((err) => {
+                server.log.error({ eventId: event.id, error: err }, 'Notification failed')
+              })
+          }
+
+          return reply.status(201).send({
+            success: true,
+            data: event,
+          })
+        } else if (type === 'end') {
+          // Update existing event with duration and video path
+          const id = `motion-${cameraId}-${eventId}`
+          const existing = getEventById(id)
+
+          if (existing) {
+            const duration = timestamp - existing.timestamp
+            const videoFilename = `${new Date(existing.timestamp * 1000).toISOString().replace(/[-:]/g, '').slice(0, 15)}.mp4`
+
+            const event = updateEvent(id, {
+              duration,
+              videoPath: `${cameraId}/${videoFilename}`,
+            })
+
+            return reply.send({
+              success: true,
+              data: event,
+            })
+          } else {
+            server.log.warn({ eventId: id }, 'End event for non-existent motion event')
+            return reply.send({ success: true })
+          }
+        }
+
+        return reply.send({ success: true })
+      } catch (error) {
+        server.log.error({ error, body: request.body }, 'Failed to process Motion event')
+
+        if (error instanceof ApiError) {
+          return reply.status(error.statusCode).send(error.toJSON())
+        }
+
+        return reply.status(500).send({
+          error: 'INTERNAL_ERROR',
+          message: 'Failed to process event',
+        })
+      }
+    },
+  )
+
   /**
    * Frigate webhook endpoint
    * Receives events from Frigate when motion is detected

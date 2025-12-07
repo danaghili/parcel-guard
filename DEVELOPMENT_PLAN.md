@@ -9,6 +9,18 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 - `HARDWARE_SPEC.md` - Hardware components
 - `SCOPE_OF_WORK.md` - Feature specifications
 - `DEPLOYMENT_SPEC.md` - Deployment procedures
+- `RECOVERY_NOTES.md` - Hub recovery procedures
+- `SOW_UPDATES.md` - Scope changes and learnings
+
+---
+
+## Current Status (December 2024)
+
+**Hub Status:** Requires reimaging after Frigate crash
+**Cameras:** Both cam1 (192.168.1.133) and cam2 (192.168.1.183) are streaming via mediamtx
+**Software:** Phases 0-6A complete, Phase 7A in progress
+
+**Key Decision:** Replace Frigate with Motion (lightweight motion detection) due to Pi 4 resource constraints.
 
 ---
 
@@ -20,13 +32,18 @@ This document provides a phase-by-phase implementation plan for ParcelGuard. Eac
 | 1 | Core Infrastructure | Camera streaming, hub setup, PWA shell | Phase 0 | ✅ Complete |
 | 2 | Live View | Multi-camera grid, stream playback | Phase 1 | ✅ Complete |
 | 3A | Motion Detection (Pre-Hardware) | Event API, storage management, webhook | Phase 2 | ✅ Complete |
-| 3B | Motion Detection (Post-Hardware) | Frigate config, real camera testing | Phase 3A + Hardware | ⬜ Not started |
+| 3B | Motion Detection (Post-Hardware) | Motion config, real camera testing | Phase 3A + Hub | ⬜ Not started |
 | 4 | Event Timeline & Playback | Event list, video player | Phase 3A | ✅ Complete |
 | 5 | Notifications | Push alerts on motion | Phase 4 | ✅ Complete |
 | 6A | Settings & Administration (Pre-Hardware) | Camera management UI, system settings, health dashboard | Phase 5 | ✅ Complete |
-| 6B | Settings & Administration (Post-Hardware) | Motion zone editor, recording schedules, real system stats | Phase 6A + Hardware | ⬜ Not started |
+| 6B | Settings & Administration (Post-Hardware) | Motion zone editor, recording schedules, real system stats | Phase 6A + Hub | ⬜ Not started |
 | 7A | Polish & Optimisation (Pre-Hardware) | Performance, UX, PWA, accessibility | Phase 6A | 🔄 In Progress |
-| 7B | Polish & Optimisation (Post-Hardware) | Real stream testing, final validation | Phase 7A + Hardware | ⬜ Not started |
+| 7B | Polish & Optimisation (Post-Hardware) | Real stream testing, final validation | Phase 7A + Hub | ⬜ Not started |
+| **H1** | **Hub Recovery** | **Reimage Pi 4, basic setup** | None | ✅ Complete |
+| **H2** | **Hub Services** | **API, web app, nginx deployment** | H1 | ✅ Complete |
+| **H3** | **Motion Integration** | **Motion daemon, event forwarding** | H2 | ⬜ Not started |
+| **H4** | **Remote Access** | **Tailscale VPN setup** | H2 | ⬜ Not started |
+| **H5** | **Setup Scripts** | **Automated setup for hub and cameras** | H3, H4 | ⬜ Not started |
 
 ---
 
@@ -963,49 +980,727 @@ Final validation with real camera hardware and production environment sign-off.
 
 ---
 
+## Phase H1: Hub Recovery ✅
+
+### Objective
+Reimage the Pi 4 hub after Frigate crash and establish basic system configuration.
+
+### Prerequisites
+- Raspberry Pi Imager installed on Mac
+- microSD card (32GB+)
+- Home WiFi credentials
+
+### Tasks
+
+#### H1.1 Reimage SD Card
+- [ ] Download Raspberry Pi OS Lite (64-bit)
+- [ ] Flash with Raspberry Pi Imager
+- [ ] Configure during imaging:
+  - Hostname: `ParcelGuard`
+  - Username: `dan`
+  - WiFi: Home network credentials
+  - SSH: Enable with password authentication
+  - Locale: Set timezone
+
+#### H1.2 First Boot
+- [ ] Insert SD card and power on Pi 4
+- [ ] Wait for first boot to complete (~2-3 minutes)
+- [ ] SSH to `dan@ParcelGuard.local` (or IP if .local fails)
+- [ ] Verify network connectivity: `ping google.com`
+
+#### H1.3 System Updates
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo reboot
+```
+
+#### H1.4 Install Core Dependencies
+```bash
+# Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Git
+sudo apt install -y git
+
+# Verify installations
+node --version  # Should be v20.x
+npm --version
+git --version
+```
+
+#### H1.5 Mount SSD for Storage (DEFERRED)
+
+> **Issue:** The Argon M.2 case has UAS compatibility issues with some SSDs. The ASMedia controller (174c:1156) crashes during format operations even with UAS disabled (`usb-storage.quirks=174c:1156:u`).
+>
+> **Current status:** Using SD card storage temporarily. SSD to be added later with compatible hardware.
+>
+> **Recommended SSDs for Argon M.2 case (reported working):**
+> - Kingston A400 240GB/480GB (SA400M8)
+> - Crucial MX500 M.2 SATA
+> - Western Digital Green M.2 SATA
+> - Samsung 860 EVO M.2 SATA
+>
+> **Important:** Must be M.2 **SATA**, not NVMe. The Argon M.2 SATA case doesn't support NVMe.
+>
+> **Alternative:** Use a USB 3.0 SATA enclosure with a 2.5" SSD instead of the M.2 slot.
+
+When SSD is ready, follow these steps:
+```bash
+# Identify the SSD (usually /dev/sda)
+lsblk
+
+# Format the SSD (if new/unformatted) - WARNING: destroys all data
+sudo mkfs.ext4 /dev/sda
+
+# Create mount point
+sudo mkdir -p /mnt/storage
+
+# Get the UUID for reliable mounting
+sudo blkid /dev/sda
+# Note the UUID (e.g., UUID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
+
+# Add to fstab for auto-mount on boot
+sudo nano /etc/fstab
+# Add this line (replace UUID with your value):
+# UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx /mnt/storage ext4 defaults,noatime 0 2
+
+# Mount now
+sudo mount -a
+
+# Verify mount
+df -h /mnt/storage
+```
+
+#### H1.6 Create Storage Directories
+```bash
+sudo mkdir -p /mnt/storage/parcelguard/data
+sudo mkdir -p /mnt/storage/parcelguard/clips/cam1
+sudo mkdir -p /mnt/storage/parcelguard/clips/cam2
+sudo mkdir -p /mnt/storage/parcelguard/thumbnails
+sudo chown -R dan:dan /mnt/storage
+```
+
+### Deliverables
+- Pi 4 running Raspberry Pi OS Lite (64-bit)
+- SSH accessible
+- Node.js 20 installed
+- Storage directories created (SD card for now, SSD later)
+
+### Acceptance Criteria
+- [x] Can SSH to `dan@parcelguard-hub.local`
+- [x] `node --version` returns v20.x
+- [ ] `/mnt/storage/parcelguard/` exists with correct permissions
+- [ ] (Deferred) SSD mounted and persists after reboot
+
+---
+
+## Phase H2: Hub Services ✅
+
+### Objective
+Deploy the ParcelGuard API and web application on the hub.
+
+### Prerequisites
+- Phase H1 complete
+- GitHub repo accessible
+
+### Tasks
+
+#### H2.1 Clone Repository
+```bash
+cd ~
+git clone https://github.com/danaghili/parcel-guard.git
+cd parcel-guard
+npm install
+```
+
+#### H2.2 Build Web Application
+```bash
+cd ~/parcel-guard/apps/web
+npm run build
+```
+
+#### H2.3 Configure API Environment
+```bash
+cd ~/parcel-guard/apps/api
+cp .env.example .env
+# Edit .env with production values:
+# DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db
+# PORT=3000
+# NODE_ENV=production
+```
+
+#### H2.4 Seed Database
+```bash
+cd ~/parcel-guard/apps/api
+DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db npx tsx src/db/seed.ts
+```
+
+#### H2.5 Create API Systemd Service
+```bash
+sudo nano /etc/systemd/system/parcelguard-api.service
+```
+
+Contents:
+```ini
+[Unit]
+Description=ParcelGuard API Server
+After=network.target
+
+[Service]
+Type=simple
+User=dan
+WorkingDirectory=/home/dan/parcel-guard/apps/api
+Environment=NODE_ENV=production
+Environment=DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db
+Environment=PORT=3000
+ExecStart=/usr/bin/npx tsx src/index.ts
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable parcelguard-api
+sudo systemctl start parcelguard-api
+sudo systemctl status parcelguard-api
+```
+
+#### H2.6 Install and Configure Nginx
+```bash
+sudo apt install -y nginx
+sudo nano /etc/nginx/sites-available/parcelguard
+```
+
+Contents:
+```nginx
+server {
+    listen 80;
+    server_name ParcelGuard.local;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    location / {
+        root /home/dan/parcel-guard/apps/web/dist;
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+```bash
+sudo ln -s /etc/nginx/sites-available/parcelguard /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### H2.7 Test Core Functionality
+- [ ] Access http://ParcelGuard.local in browser
+- [ ] Login with PIN (default: 1234)
+- [ ] Navigate to Live View
+- [ ] Verify cameras show as online (health checks updating)
+- [ ] View camera streams
+
+### Deliverables
+- API running as systemd service
+- Web app served via Nginx
+- Application accessible at http://ParcelGuard.local
+
+### Acceptance Criteria
+- [ ] `sudo systemctl status parcelguard-api` shows active
+- [ ] http://ParcelGuard.local loads the PWA
+- [ ] Can login and navigate the app
+- [ ] Camera health checks are updating status
+- [ ] Camera streams visible in Live View
+
+---
+
+## Phase H3: Motion Integration ⬜
+
+### Objective
+Replace Frigate with Motion (lightweight motion detection daemon) and configure event forwarding.
+
+### Prerequisites
+- Phase H2 complete
+- Cameras streaming via mediamtx
+
+### Tasks
+
+#### H3.1 Install Motion
+```bash
+sudo apt install -y motion
+```
+
+#### H3.2 Configure Motion for Camera 1
+```bash
+sudo mkdir -p /etc/motion
+sudo nano /etc/motion/camera1.conf
+```
+
+Contents:
+```conf
+# Camera 1 Configuration
+camera_name cam1
+netcam_url rtsp://192.168.1.133:8554/stream
+netcam_userpass :
+
+# Detection settings
+threshold 1500
+minimum_motion_frames 3
+event_gap 60
+
+# Recording
+movie_output on
+movie_max_time 60
+movie_quality 75
+movie_codec mp4
+movie_filename /mnt/storage/parcelguard/clips/cam1/%Y%m%d_%H%M%S
+
+# Snapshots
+picture_output first
+picture_filename /mnt/storage/parcelguard/thumbnails/cam1_%Y%m%d_%H%M%S
+
+# Event hooks
+on_event_start /home/dan/parcel-guard/scripts/motion-event.sh start cam1 %v
+on_event_end /home/dan/parcel-guard/scripts/motion-event.sh end cam1 %v
+
+# Performance
+framerate 5
+width 640
+height 480
+```
+
+#### H3.3 Configure Motion for Camera 2
+```bash
+sudo nano /etc/motion/camera2.conf
+```
+
+Contents (same as camera1.conf but with):
+```conf
+camera_name cam2
+netcam_url rtsp://192.168.1.183:8554/stream
+movie_filename /mnt/storage/parcelguard/clips/cam2/%Y%m%d_%H%M%S
+picture_filename /mnt/storage/parcelguard/thumbnails/cam2_%Y%m%d_%H%M%S
+on_event_start /home/dan/parcel-guard/scripts/motion-event.sh start cam2 %v
+on_event_end /home/dan/parcel-guard/scripts/motion-event.sh end cam2 %v
+```
+
+#### H3.4 Configure Main Motion Config
+```bash
+sudo nano /etc/motion/motion.conf
+```
+
+Key settings:
+```conf
+daemon on
+log_level 6
+log_file /var/log/motion/motion.log
+
+# Include camera configs
+camera /etc/motion/camera1.conf
+camera /etc/motion/camera2.conf
+
+# Web control
+webcontrol_port 8080
+webcontrol_localhost off
+```
+
+#### H3.5 Create Event Forwarder Script
+```bash
+nano ~/parcel-guard/scripts/motion-event.sh
+chmod +x ~/parcel-guard/scripts/motion-event.sh
+```
+
+Contents:
+```bash
+#!/bin/bash
+# Forward motion events to ParcelGuard API
+
+EVENT_TYPE=$1  # start or end
+CAMERA_ID=$2
+EVENT_ID=$3
+
+API_URL="http://localhost:3000"
+
+if [ "$EVENT_TYPE" == "start" ]; then
+    curl -X POST "$API_URL/motion/events" \
+        -H "Content-Type: application/json" \
+        -d "{\"cameraId\": \"$CAMERA_ID\", \"eventId\": \"$EVENT_ID\", \"type\": \"start\"}"
+elif [ "$EVENT_TYPE" == "end" ]; then
+    curl -X POST "$API_URL/motion/events" \
+        -H "Content-Type: application/json" \
+        -d "{\"cameraId\": \"$CAMERA_ID\", \"eventId\": \"$EVENT_ID\", \"type\": \"end\"}"
+fi
+```
+
+#### H3.6 Update API for Motion Events
+- [ ] Create `/api/motion/events` endpoint (adapts existing Frigate webhook)
+- [ ] Map Motion event format to existing event structure
+- [ ] Link to video clips and thumbnails
+
+#### H3.7 Start Motion Service
+```bash
+sudo systemctl enable motion
+sudo systemctl start motion
+sudo systemctl status motion
+```
+
+#### H3.8 Test Motion Detection
+- [ ] Trigger motion in camera view
+- [ ] Check `/var/log/motion/motion.log` for events
+- [ ] Verify clip saved to `/mnt/storage/parcelguard/clips/`
+- [ ] Verify thumbnail saved
+- [ ] Check event appears in ParcelGuard app
+- [ ] Verify notification sent (if configured)
+
+### Deliverables
+- Motion daemon running and detecting motion
+- Events forwarded to ParcelGuard API
+- Clips and thumbnails saved to storage
+- Notifications triggered on motion
+
+### Acceptance Criteria
+- [ ] `sudo systemctl status motion` shows active
+- [ ] Motion triggers recording within 2 seconds
+- [ ] Events appear in ParcelGuard within 5 seconds
+- [ ] Clips playable in app
+- [ ] Thumbnails display correctly
+
+---
+
+## Phase H4: Remote Access ⬜
+
+### Objective
+Configure Tailscale VPN for secure remote access to the system.
+
+### Prerequisites
+- Phase H2 complete
+- Tailscale account (free tier)
+
+### Tasks
+
+#### H4.1 Install Tailscale on Hub
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+- Follow the authentication link
+- Approve the device in Tailscale admin console
+
+#### H4.2 Configure Tailscale
+```bash
+# Get Tailscale IP
+tailscale ip -4
+
+# Enable SSH via Tailscale
+sudo tailscale up --ssh
+```
+
+#### H4.3 Install Tailscale on Cameras (Optional)
+If cameras need remote access:
+```bash
+# On each Pi Zero
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+#### H4.4 Configure Phone/Laptop
+- Install Tailscale app on phone
+- Install Tailscale on laptop
+- Login with same account
+- Verify can see ParcelGuard in device list
+
+#### H4.5 Test Remote Access
+- [ ] Disconnect from home WiFi (use mobile data)
+- [ ] Access http://[tailscale-ip] in browser
+- [ ] Verify app loads and functions
+- [ ] Test SSH via Tailscale: `ssh dan@[tailscale-ip]`
+
+#### H4.6 Update Documentation
+- [ ] Document Tailscale IP in RECOVERY_NOTES.md
+- [ ] Add Tailscale setup to SETUP_GUIDE.md
+
+### Deliverables
+- Tailscale VPN configured on hub
+- Remote access from phone/laptop
+- SSH accessible via Tailscale
+
+### Acceptance Criteria
+- [ ] Can access http://[tailscale-ip] from mobile data
+- [ ] App functions normally over Tailscale
+- [ ] SSH works via Tailscale
+- [ ] Latency acceptable for video streaming
+
+---
+
+## Phase H5: Setup Scripts ⬜
+
+### Objective
+Create automated setup scripts for repeatable hub and camera configuration.
+
+### Prerequisites
+- Phases H1-H4 complete and tested
+- All manual steps documented
+
+### Tasks
+
+#### H5.1 Create Hub Setup Script
+Create `scripts/pi-hub/setup-hub.sh`:
+```bash
+#!/bin/bash
+# Automated hub setup script
+# Run after fresh Raspberry Pi OS Lite install
+
+set -e  # Exit on error
+
+echo "=== ParcelGuard Hub Setup ==="
+
+# System updates
+echo "Updating system..."
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 20
+echo "Installing Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs git nginx
+
+# Mount SSD (assumes already formatted as ext4)
+echo "Mounting SSD..."
+sudo mkdir -p /mnt/storage
+SSD_UUID=$(sudo blkid -s UUID -o value /dev/sda)
+if [ -n "$SSD_UUID" ]; then
+    echo "UUID=$SSD_UUID /mnt/storage ext4 defaults,noatime 0 2" | sudo tee -a /etc/fstab
+    sudo mount -a
+else
+    echo "WARNING: SSD not found at /dev/sda - using SD card for storage"
+fi
+
+# Create storage directories
+echo "Creating storage directories..."
+sudo mkdir -p /mnt/storage/parcelguard/{data,clips/cam1,clips/cam2,thumbnails}
+sudo chown -R $USER:$USER /mnt/storage
+
+# Clone repository
+echo "Cloning repository..."
+cd ~
+git clone https://github.com/danaghili/parcel-guard.git
+cd parcel-guard
+npm install
+
+# Build web app
+echo "Building web app..."
+cd apps/web
+npm run build
+
+# Configure and seed database
+echo "Setting up database..."
+cd ../api
+cp .env.example .env
+sed -i 's|DATABASE_PATH=.*|DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db|' .env
+DATABASE_PATH=/mnt/storage/parcelguard/data/parcelguard.db npx tsx src/db/seed.ts
+
+# Install systemd service
+echo "Installing API service..."
+sudo cp ~/parcel-guard/scripts/pi-hub/parcelguard-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable parcelguard-api
+sudo systemctl start parcelguard-api
+
+# Configure Nginx
+echo "Configuring Nginx..."
+sudo cp ~/parcel-guard/scripts/pi-hub/nginx-parcelguard.conf /etc/nginx/sites-available/parcelguard
+sudo ln -sf /etc/nginx/sites-available/parcelguard /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl restart nginx
+
+# Install Motion
+echo "Installing Motion..."
+sudo apt install -y motion
+sudo cp ~/parcel-guard/config/motion/*.conf /etc/motion/
+sudo systemctl enable motion
+sudo systemctl start motion
+
+# Install Tailscale
+echo "Installing Tailscale..."
+curl -fsSL https://tailscale.com/install.sh | sh
+echo "Run 'sudo tailscale up' to authenticate"
+
+echo "=== Setup Complete ==="
+echo "Access the app at http://ParcelGuard.local"
+```
+
+#### H5.2 Create Camera Setup Script
+Create `scripts/pi-zero/setup-camera.sh`:
+```bash
+#!/bin/bash
+# Automated camera setup script
+# Run after fresh Raspberry Pi OS Lite install
+
+set -e
+
+CAMERA_ID=${1:-cam1}
+echo "=== ParcelGuard Camera Setup: $CAMERA_ID ==="
+
+# System updates
+sudo apt update && sudo apt upgrade -y
+
+# Enable camera
+echo "Enabling camera interface..."
+sudo raspi-config nonint do_camera 0
+
+# Install mediamtx
+echo "Installing mediamtx..."
+# [mediamtx installation steps]
+
+# Configure streaming
+echo "Configuring streaming service..."
+# [streaming configuration]
+
+# Configure multi-network WiFi
+echo "Configuring WiFi networks..."
+# [wpa_supplicant configuration with priorities]
+
+# Install systemd service
+sudo systemctl enable mediamtx
+sudo systemctl start mediamtx
+
+echo "=== Camera Setup Complete ==="
+echo "Stream available at rtsp://$(hostname -I | awk '{print $1}'):8554/stream"
+```
+
+#### H5.3 Create Supporting Config Files
+- [ ] `scripts/pi-hub/parcelguard-api.service` - systemd unit
+- [ ] `scripts/pi-hub/nginx-parcelguard.conf` - nginx config
+- [ ] `config/motion/motion.conf` - main motion config
+- [ ] `config/motion/camera1.conf` - camera 1 config
+- [ ] `config/motion/camera2.conf` - camera 2 config
+
+#### H5.4 Create Multi-Network WiFi Config
+```bash
+# /etc/wpa_supplicant/wpa_supplicant.conf template
+network={
+    ssid="HomeNetwork"
+    psk="password"
+    priority=3
+}
+network={
+    ssid="GuestNetwork"
+    psk="password"
+    priority=2
+}
+network={
+    ssid="MobileHotspot"
+    psk="password"
+    priority=1
+}
+```
+
+#### H5.5 Test Scripts
+- [ ] Test hub setup on fresh SD card
+- [ ] Test camera setup on fresh SD card
+- [ ] Document any manual steps that can't be automated
+- [ ] Update README with script usage
+
+### Deliverables
+- `scripts/pi-hub/setup-hub.sh` - one-command hub setup
+- `scripts/pi-zero/setup-camera.sh` - one-command camera setup
+- Supporting config files in repository
+- Updated documentation
+
+### Acceptance Criteria
+- [ ] Hub setup script completes without errors
+- [ ] Camera setup script completes without errors
+- [ ] System functional after running scripts
+- [ ] Multi-network WiFi working
+- [ ] Scripts tested on fresh images
+
+---
+
 ## Implementation Order
 
-### Recommended Sequence
+### Current Sequence (Post-Recovery)
+
+The hub crashed after starting Frigate. We're now in recovery mode with a new approach:
 
 ```
-                                              ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-                                              │  Phase 3B       │     │  Phase 6B       │     │  Phase 7B       │
-                                              │  (Post-Hardware)│     │  (Post-Hardware)│     │  (Post-Hardware)│
-                                              │  Frigate Config │     │  Motion Zones   │     │  Final Valid.   │
-                                              └────────┬────────┘     └────────┬────────┘     └────────┬────────┘
-                                                       │                       │                       │
-                                                       │ Hardware arrives      │                       │
-                                                       │                       │                       │
-Phase 0 ─────► Phase 1 ─────► Phase 2 ─────► Phase 3A ─┴───► Phase 4 ───► Phase 5 ───► Phase 6A ─┴──► Phase 7A ─┴──► Done
-(Scaffolding)  (Infrastructure) (Live View)   (Pre-Hardware)    (Events UI)  (Notify)     (Pre-Hardware)   (Pre-Hardware)
-     ✅              ✅              ✅            ✅              ✅            ✅              ✅
-                                               Event API         Events List  ntfy.sh      Camera Mgmt UI   Performance
-                                               Storage Mgmt      Video Player Quiet Hours  System Settings  PWA/A11y
-                                                                              Cooldowns    Health Dashboard Documentation
+COMPLETED (Pre-Hardware):
+Phase 0 ─► Phase 1 ─► Phase 2 ─► Phase 3A ─► Phase 4 ─► Phase 5 ─► Phase 6A ─► Phase 7A (in progress)
+   ✅         ✅         ✅          ✅          ✅         ✅          ✅            🔄
+
+CURRENT FOCUS (Hardware Deployment):
+H1 ────────► H2 ────────► H3 ────────► H4 ────────► H5
+Hub          Hub          Motion       Tailscale    Setup
+Recovery     Services     Integration  VPN          Scripts
+   ⬜           ⬜            ⬜            ⬜           ⬜
+
+THEN (Post-Hardware Polish):
+Phase 3B ─► Phase 6B ─► Phase 7B ─► Done
+Motion      Motion       Final
+Tuning      Zones        Validation
+   ⬜          ⬜            ⬜
 ```
+
+### Recommended Next Steps
+
+1. **H1: Hub Recovery** - Reimage SD card, install OS and dependencies
+2. **H2: Hub Services** - Deploy API and web app
+3. **H3: Motion Integration** - Configure Motion daemon (replacing Frigate)
+4. **H4: Remote Access** - Set up Tailscale VPN
+5. **H5: Setup Scripts** - Automate for future recovery/deployment
+6. **Phase 3B** - Tune motion detection sensitivity
+7. **Phase 6B** - Add motion zone editor UI
+8. **Phase 7B** - Final hardware validation and production sign-off
 
 ### Hardware-Independent Development Path
 
-The system is designed so that **Phases 0-7A** can be developed without physical camera hardware:
+Phases 0-7A were developed without physical camera hardware:
 
 | Phase | Hardware Required? | Notes |
 |-------|-------------------|-------|
 | 0-2 | No | ✅ Complete - Used mock data and HLS test streams |
 | 3A | No | ✅ Complete - Event simulation script provides test data |
-| 3B | **Yes** | Frigate configuration requires real cameras |
+| 3B | **Hub Required** | Motion config tuning with real cameras |
 | 4 | No | ✅ Complete - Uses events from 3A (simulated or real) |
 | 5 | No | ✅ Complete - ntfy.sh notifications with simulated events |
 | 6A | No | ✅ Complete - Camera management, settings, health dashboard |
-| 6B | **Yes** | Motion zone editor needs live preview, real CPU temp |
-| 7A | No | Performance, PWA, accessibility, documentation |
-| 7B | **Yes** | Real stream testing, hardware validation, production sign-off |
+| 6B | **Hub Required** | Motion zone editor needs live preview |
+| 7A | No | 🔄 In Progress - Performance, PWA, accessibility |
+| 7B | **Hub Required** | Real stream testing, final validation |
+| H1-H5 | **Hub Required** | Hardware deployment phases |
+
+### Key Change: Frigate → Motion
+
+**Why the change:**
+- Frigate with AI detection overwhelmed Pi 4 (4GB RAM)
+- System crashed shortly after Frigate startup
+- Motion is lightweight, no AI, much lower resource usage
+
+**Trade-offs:**
+- ❌ No AI-based object detection (person vs car vs animal)
+- ✅ Much simpler setup
+- ✅ Lower CPU/RAM usage
+- ✅ Motion-triggered recording still works
+- ✅ Can add Coral TPU later to enable Frigate if needed
 
 ### Parallel Work Opportunities
 
-- **Phase 0-1:** Hardware setup (Pi Zero, Pi 4) can happen in parallel with software scaffolding
-- **Phase 1:** Camera scripts and API can be developed in parallel
-- **Phase 2-3:** Frontend components and Frigate config can be developed in parallel
-- **Phase 6:** Different settings sections can be built independently
+While waiting for hub recovery:
+- Complete Phase 7A remaining tasks (cross-browser testing, security audit)
+- Prepare Motion configuration files
+- Create setup script templates
 
 ---
 
@@ -1013,11 +1708,14 @@ The system is designed so that **Phases 0-7A** can be developed without physical
 
 | Risk | Mitigation |
 |------|------------|
-| Camera streaming instability | Test thoroughly in Phase 1, implement robust reconnection |
-| Frigate resource usage on Pi 4 | Monitor in Phase 3, adjust detection settings if needed |
-| Storage fills up | Implement early warning in Phase 3, conservative retention |
-| Remote access security | Use Cloudflare Tunnel (encrypted), require auth |
-| Power bank runtime | Test in Phase 1, document battery swap procedure |
+| Camera streaming instability | Test thoroughly in Phase H2, implement robust reconnection |
+| Motion daemon resource usage | Motion is lightweight; monitor in Phase H3, adjust threshold if needed |
+| Hub crash during setup | Test each service individually before enabling all; keep backups |
+| Storage fills up | Implement early warning in Phase 3A ✅, conservative retention |
+| Remote access security | Use Tailscale VPN (encrypted, requires auth) |
+| Network unreliable | Multi-network WiFi with priorities; Tailscale for remote recovery |
+| Power bank runtime | Test in deployment, document battery swap procedure |
+| Hub becomes unreachable | Tailscale SSH provides backup access even if local network fails |
 
 ---
 
@@ -1035,5 +1733,9 @@ The system is designed so that **Phases 0-7A** can be developed without physical
 
 ---
 
-*Last Updated: December 2024*
-*Version: 1.6.0*
+*Last Updated: December 6, 2024*
+*Version: 2.0.0*
+
+**Changelog:**
+- v2.0.0: Major revision - Added hub recovery phases (H1-H5), replaced Frigate with Motion, added Tailscale for remote access
+- v1.6.0: Phase 7A in progress, all pre-hardware phases complete
