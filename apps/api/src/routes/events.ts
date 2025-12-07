@@ -129,17 +129,16 @@ export const eventsRoutes: FastifyPluginAsync = async (
             data: event,
           })
         } else if (type === 'end') {
-          // Update existing event with duration and video path
+          // Update existing event with duration
+          // Note: videoPath is already set correctly on event start, no need to update it
           const id = `motion-${cameraId}-${eventId}`
           const existing = getEventById(id)
 
           if (existing) {
             const duration = timestamp - existing.timestamp
-            const videoFilename = `${new Date(existing.timestamp * 1000).toISOString().replace(/[-:]/g, '').slice(0, 15)}.mp4`
 
             const event = updateEvent(id, {
               duration,
-              videoPath: `${cameraId}/${videoFilename}`,
             })
 
             return reply.send({
