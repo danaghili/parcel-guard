@@ -256,12 +256,22 @@ export class ApiError extends Error {
 
 export const api = new ApiClient()
 
+// User type for auth responses
+export interface User {
+  id: string
+  username: string
+  displayName: string | null
+  isAdmin: boolean
+  enabled: boolean
+  createdAt: number
+}
+
 // Auth API
 export const authApi = {
-  login: async (pin: string): Promise<{ token: string; expiresAt: number }> => {
-    const response = await api.post<{ success: true; data: { token: string; expiresAt: number } }>(
+  login: async (username: string, pin: string): Promise<{ token: string; expiresAt: number; user: User }> => {
+    const response = await api.post<{ success: true; data: { token: string; expiresAt: number; user: User } }>(
       '/api/auth/login',
-      { pin },
+      { username, pin },
       { requireAuth: false },
     )
     return response.data
@@ -271,11 +281,42 @@ export const authApi = {
     await api.post('/api/auth/logout')
   },
 
-  verify: async (): Promise<{ valid: boolean; expiresAt: number }> => {
-    const response = await api.get<{ success: true; data: { valid: boolean; expiresAt: number } }>(
+  verify: async (): Promise<{ valid: boolean; expiresAt: number; user: User }> => {
+    const response = await api.get<{ success: true; data: { valid: boolean; expiresAt: number; user: User } }>(
       '/api/auth/verify',
     )
     return response.data
+  },
+}
+
+// Users API (admin only)
+export const usersApi = {
+  list: async (): Promise<User[]> => {
+    const response = await api.get<{ success: true; data: User[] }>('/api/users')
+    return response.data
+  },
+
+  get: async (id: string): Promise<User> => {
+    const response = await api.get<{ success: true; data: User }>(`/api/users/${id}`)
+    return response.data
+  },
+
+  create: async (data: { username: string; pin: string; displayName?: string; isAdmin?: boolean }): Promise<User> => {
+    const response = await api.post<{ success: true; data: User }>('/api/users', data)
+    return response.data
+  },
+
+  update: async (id: string, data: { displayName?: string; isAdmin?: boolean; enabled?: boolean }): Promise<User> => {
+    const response = await api.put<{ success: true; data: User }>(`/api/users/${id}`, data)
+    return response.data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/api/users/${id}`)
+  },
+
+  updatePin: async (id: string, newPin: string, currentPin?: string): Promise<void> => {
+    await api.put(`/api/users/${id}/pin`, { newPin, currentPin })
   },
 }
 
@@ -385,10 +426,6 @@ export const settingsApi = {
       {},
     )
     return response
-  },
-
-  updatePin: async (currentPin: string, newPin: string): Promise<void> => {
-    await api.put('/api/settings/pin', { currentPin, newPin })
   },
 }
 

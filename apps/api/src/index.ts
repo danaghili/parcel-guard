@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit'
 import { initDb } from './db'
 import { runMigrations } from './db/migrate'
 import { authRoutes } from './routes/auth'
+import { usersRoutes } from './routes/users'
 import { settingsRoutes } from './routes/settings'
 import { camerasRoutes } from './routes/cameras'
 import { systemRoutes } from './routes/system'
@@ -61,6 +62,7 @@ async function buildServer(
   // Register routes
   await server.register(systemRoutes, { prefix: '/api' })
   await server.register(authRoutes, { prefix: '/api' })
+  await server.register(usersRoutes, { prefix: '/api' })
   await server.register(settingsRoutes, { prefix: '/api' })
   await server.register(camerasRoutes, { prefix: '/api' })
   await server.register(eventsRoutes, { prefix: '/api' })

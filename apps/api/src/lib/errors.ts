@@ -37,6 +37,9 @@ export const Errors = {
   badRequest: (message: string, details?: unknown): ApiError =>
     new ApiError(400, 'BAD_REQUEST', message, details),
 
+  conflict: (message: string): ApiError =>
+    new ApiError(409, 'CONFLICT', message),
+
   internal: (message = 'Internal server error'): ApiError =>
     new ApiError(500, 'INTERNAL_ERROR', message),
 }

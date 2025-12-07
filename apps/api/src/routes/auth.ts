@@ -3,6 +3,7 @@ import { login, logout, verifySession } from '../services/auth'
 import { ApiError } from '../lib/errors'
 
 interface LoginBody {
+  username: string
   pin: string
 }
 
@@ -27,7 +28,14 @@ const loginRateLimit = isTestEnv
 export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance): Promise<void> => {
   // Login with rate limiting to prevent brute force attacks
   server.post<{ Body: LoginBody }>('/auth/login', loginRateLimit, async (request, reply) => {
-    const { pin } = request.body
+    const { username, pin } = request.body
+
+    if (!username || typeof username !== 'string') {
+      return reply.status(400).send({
+        error: 'BAD_REQUEST',
+        message: 'Username is required',
+      })
+    }
 
     if (!pin || typeof pin !== 'string') {
       return reply.status(400).send({
@@ -37,12 +45,13 @@ export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance): P
     }
 
     try {
-      const session = await login(pin)
+      const result = await login(username, pin)
       return reply.send({
         success: true,
         data: {
-          token: session.token,
-          expiresAt: session.expiresAt,
+          token: result.token,
+          expiresAt: result.expiresAt,
+          user: result.user,
         },
       })
     } catch (error) {
@@ -91,6 +100,7 @@ export const authRoutes: FastifyPluginAsync = async (server: FastifyInstance): P
       data: {
         valid: true,
         expiresAt: session.expiresAt,
+        user: session.user,
       },
     })
   })

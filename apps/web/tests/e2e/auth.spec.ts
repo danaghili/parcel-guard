@@ -12,16 +12,17 @@ test.describe('Authentication', () => {
 
     // Should redirect to login page
     await expect(page).toHaveURL(/\/login/)
-    await expect(page.getByText('Enter your PIN to continue')).toBeVisible()
+    await expect(page.getByText('Sign in to continue')).toBeVisible()
   })
 
-  test('should show error for invalid PIN', async ({ page }) => {
+  test('should show error for invalid credentials', async ({ page }) => {
     await page.goto('/login')
+
+    // Enter username
+    await page.fill('#username', 'admin')
 
     // Enter invalid PIN
     const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
-
-    // Type invalid PIN digit by digit
     await pinInputs.first().click()
     await page.keyboard.type('0000')
 
@@ -31,14 +32,16 @@ test.describe('Authentication', () => {
     })
   })
 
-  test('should login with valid PIN and redirect to dashboard', async ({ page }) => {
+  test('should login with valid username and PIN and redirect to dashboard', async ({ page }) => {
     await page.goto('/login')
 
-    // Enter valid PIN (default: 1234)
-    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
+    // Enter username
+    await page.fill('#username', 'admin')
 
+    // Enter valid PIN (default: 2808)
+    const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
-    await page.keyboard.type('1234')
+    await page.keyboard.type('2808')
 
     // Should redirect to dashboard
     await expect(page).toHaveURL('/', { timeout: 5000 })
@@ -52,10 +55,11 @@ test.describe('Authentication', () => {
     // Should redirect to login
     await expect(page).toHaveURL(/\/login/)
 
-    // Login
+    // Login with username and PIN
+    await page.fill('#username', 'admin')
     const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
-    await page.keyboard.type('1234')
+    await page.keyboard.type('2808')
 
     // Should redirect to live view (the original destination)
     await expect(page).toHaveURL('/live', { timeout: 5000 })
@@ -64,9 +68,10 @@ test.describe('Authentication', () => {
   test('should maintain session across page refresh', async ({ page }) => {
     // Login first
     await page.goto('/login')
+    await page.fill('#username', 'admin')
     const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
-    await page.keyboard.type('1234')
+    await page.keyboard.type('2808')
 
     // Wait for redirect to dashboard
     await expect(page).toHaveURL('/', { timeout: 5000 })
@@ -82,9 +87,10 @@ test.describe('Authentication', () => {
   test('should logout and redirect to login', async ({ page }) => {
     // Login first
     await page.goto('/login')
+    await page.fill('#username', 'admin')
     const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
     await pinInputs.first().click()
-    await page.keyboard.type('1234')
+    await page.keyboard.type('2808')
 
     await expect(page).toHaveURL('/', { timeout: 5000 })
 
@@ -101,9 +107,10 @@ test.describe('Authentication', () => {
     }
   })
 
-  test('should show default PIN hint on login page', async ({ page }) => {
+  test('should show username input on login page', async ({ page }) => {
     await page.goto('/login')
 
-    await expect(page.getByText('1234')).toBeVisible()
+    await expect(page.locator('#username')).toBeVisible()
+    await expect(page.getByText('Username')).toBeVisible()
   })
 })

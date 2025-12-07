@@ -1,3 +1,5 @@
+import type { User } from './user'
+
 export interface ApiError {
   error: string
   message: string
@@ -19,12 +21,16 @@ export type ApiResult<T> = ApiResponse<T> | ApiErrorResponse
 export interface AuthSession {
   token: string
   expiresAt: number
+  user: User
 }
 
 export interface LoginRequest {
+  username: string
   pin: string
 }
 
 export interface LoginResponse {
-  session: AuthSession
+  token: string
+  expiresAt: number
+  user: User
 }

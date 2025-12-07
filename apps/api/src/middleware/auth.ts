@@ -1,10 +1,12 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { verifySession, Session } from '../services/auth'
+import { verifySession, SessionWithUser } from '../services/auth'
+import { UserPublic } from '../services/users'
 import { Errors } from '../lib/errors'
 
 declare module 'fastify' {
   interface FastifyRequest {
-    session?: Session
+    session?: SessionWithUser
+    user?: UserPublic
   }
 }
 
@@ -28,4 +30,24 @@ export async function requireAuth(
   }
 
   request.session = session
+  request.user = session.user
+}
+
+export async function requireAdmin(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  // First run requireAuth
+  await requireAuth(request, reply)
+
+  // If requireAuth already sent an error response, don't continue
+  if (reply.sent) {
+    return
+  }
+
+  // Check if user is admin
+  if (!request.user?.isAdmin) {
+    const error = Errors.forbidden('Admin access required')
+    return reply.status(error.statusCode).send(error.toJSON())
+  }
 }

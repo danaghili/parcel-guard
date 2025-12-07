@@ -4,9 +4,12 @@ import { test, expect, Page } from '@playwright/test'
 async function login(page: Page): Promise<void> {
   await page.goto('/login')
   await page.evaluate(() => localStorage.clear())
+  // Fill in username
+  await page.fill('#username', 'admin')
+  // Fill in PIN
   const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
   await pinInputs.first().click()
-  await page.keyboard.type('1234')
+  await page.keyboard.type('2808')
   await expect(page).toHaveURL('/', { timeout: 5000 })
 }
 
@@ -23,7 +26,7 @@ test.describe('ParcelGuard App', () => {
     // Should redirect to login
     await expect(page).toHaveURL(/\/login/)
     await expect(page.getByText('ParcelGuard')).toBeVisible()
-    await expect(page.getByText('Enter your PIN to continue')).toBeVisible()
+    await expect(page.getByText('Sign in to continue')).toBeVisible()
   })
 
   test('should display dashboard after login', async ({ page }) => {

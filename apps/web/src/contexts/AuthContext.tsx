@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { api, authApi, ApiError } from '@/lib/api'
+import { api, authApi, ApiError, User } from '@/lib/api'
 
 interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
-  login: (pin: string) => Promise<void>
+  user: User | null
+  login: (username: string, pin: string) => Promise<void>
   logout: () => Promise<void>
   error: string | null
   clearError: () => void
@@ -19,6 +20,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<User | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Check for existing session on mount
@@ -31,11 +33,13 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       }
 
       try {
-        await authApi.verify()
+        const result = await authApi.verify()
         setIsAuthenticated(true)
+        setUser(result.user)
       } catch {
         // Token invalid, clear it
         api.setToken(null)
+        setUser(null)
       } finally {
         setIsLoading(false)
       }
@@ -44,13 +48,14 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     checkAuth()
   }, [])
 
-  const login = useCallback(async (pin: string): Promise<void> => {
+  const login = useCallback(async (username: string, pin: string): Promise<void> => {
     setError(null)
     setIsLoading(true)
 
     try {
-      const { token } = await authApi.login(pin)
+      const { token, user: loggedInUser } = await authApi.login(username, pin)
       api.setToken(token)
+      setUser(loggedInUser)
       setIsAuthenticated(true)
     } catch (err) {
       if (err instanceof ApiError) {
@@ -71,6 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       // Ignore logout errors
     } finally {
       api.setToken(null)
+      setUser(null)
       setIsAuthenticated(false)
     }
   }, [])
@@ -84,6 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       value={{
         isAuthenticated,
         isLoading,
+        user,
         login,
         logout,
         error,

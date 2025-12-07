@@ -1,9 +1,10 @@
 import { getDb, closeDb } from './index'
 import { runMigrations } from './migrate'
-import { hashPin } from '../lib/crypto'
+import { hashPin, generateId } from '../lib/crypto'
 import { nanoid } from 'nanoid'
 
-const DEFAULT_PIN = '1234'
+const DEFAULT_ADMIN_USERNAME = 'admin'
+const DEFAULT_ADMIN_PIN = '2808'
 
 async function seed(): Promise<void> {
   // Ensure migrations are run first
@@ -13,17 +14,34 @@ async function seed(): Promise<void> {
 
   console.log('Seeding database...')
 
-  // Hash the default PIN
-  const hashedPin = await hashPin(DEFAULT_PIN)
+  // Create default admin user if no users exist
+  const existingUsers = db.prepare('SELECT COUNT(*) as count FROM users').get() as {
+    count: number
+  }
 
-  // Insert default settings
+  if (existingUsers.count === 0) {
+    const hashedPin = await hashPin(DEFAULT_ADMIN_PIN)
+    const userId = generateId()
+    const now = Math.floor(Date.now() / 1000)
+
+    db.prepare(`
+      INSERT INTO users (id, username, pinHash, displayName, isAdmin, enabled, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, 1, 1, ?, ?)
+    `).run(userId, DEFAULT_ADMIN_USERNAME, hashedPin, 'Admin', now, now)
+
+    console.log(`  Created admin user: ${DEFAULT_ADMIN_USERNAME}`)
+    console.log(`  Default admin PIN: ${DEFAULT_ADMIN_PIN}`)
+  } else {
+    console.log(`  Skipping user creation (${existingUsers.count} users already exist)`)
+  }
+
+  // Insert default settings (without PIN - that's now per-user)
   const settingsStmt = db.prepare(`
     INSERT OR REPLACE INTO settings (key, value, updatedAt)
     VALUES (?, ?, unixepoch())
   `)
 
   const settings = [
-    ['pin', hashedPin],
     ['retentionDays', '14'],
     ['theme', 'dark'],
     ['notificationsEnabled', 'true'],
@@ -37,7 +55,6 @@ async function seed(): Promise<void> {
     settingsStmt.run(key, value)
   }
   console.log('  Inserted default settings')
-  console.log(`  Default PIN: ${DEFAULT_PIN}`)
 
   // Insert sample cameras (only if none exist)
   const existingCameras = db.prepare('SELECT COUNT(*) as count FROM cameras').get() as {

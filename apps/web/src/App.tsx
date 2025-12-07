@@ -24,6 +24,7 @@ const EventDetail = lazy(() =>
 )
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
 const System = lazy(() => import('@/pages/System').then((m) => ({ default: m.System })))
+const Users = lazy(() => import('@/pages/Users').then((m) => ({ default: m.Users })))
 
 function PageLoader(): JSX.Element {
   return (
@@ -59,6 +60,7 @@ function App(): JSX.Element {
               <Route path="/events/:id" element={<EventDetail />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/system" element={<System />} />
+              <Route path="/users" element={<Users />} />
             </Route>
           </Routes>
         </Suspense>

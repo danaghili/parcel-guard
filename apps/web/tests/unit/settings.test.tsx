@@ -24,13 +24,22 @@ beforeAll(() => {
 
 // Mock the API
 vi.mock('../../src/lib/api', () => ({
-  settingsApi: {
+  usersApi: {
     updatePin: vi.fn(),
+  },
+  settingsApi: {
     update: vi.fn(),
   },
 }))
 
-import { settingsApi } from '../../src/lib/api'
+// Mock useAuth hook
+vi.mock('../../src/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-id', username: 'testuser', isAdmin: false },
+  }),
+}))
+
+import { usersApi, settingsApi } from '../../src/lib/api'
 
 describe('PinChangeModal', () => {
   const mockOnClose = vi.fn()
@@ -102,7 +111,7 @@ describe('PinChangeModal', () => {
   })
 
   it('should call API and show success on valid submission', async () => {
-    vi.mocked(settingsApi.updatePin).mockResolvedValue(undefined)
+    vi.mocked(usersApi.updatePin).mockResolvedValue(undefined)
 
     render(<PinChangeModal isOpen={true} onClose={mockOnClose} />)
 
@@ -114,7 +123,7 @@ describe('PinChangeModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /change pin/i }))
 
     await waitFor(() => {
-      expect(settingsApi.updatePin).toHaveBeenCalledWith('1234', '5678')
+      expect(usersApi.updatePin).toHaveBeenCalledWith('test-user-id', '5678', '1234')
       expect(screen.getByText('PIN Changed')).toBeInTheDocument()
     })
   })

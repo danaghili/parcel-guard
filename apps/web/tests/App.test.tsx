@@ -15,6 +15,6 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('ParcelGuard')).toBeInTheDocument()
     })
-    expect(screen.getByText('Enter your PIN to continue')).toBeInTheDocument()
+    expect(screen.getByText('Sign in to continue')).toBeInTheDocument()
   })
 })

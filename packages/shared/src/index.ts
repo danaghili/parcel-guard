@@ -23,6 +23,14 @@ export { parseFrigateEvent } from './types/frigate'
 // Settings types
 export type { AppSettings, NotificationSettings, SystemStatus } from './types/settings'
 
+// User types
+export type {
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UpdatePinRequest,
+} from './types/user'
+
 // API types
 export type {
   ApiError,

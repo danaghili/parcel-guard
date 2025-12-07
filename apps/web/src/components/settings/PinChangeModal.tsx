@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
-import { settingsApi } from '../../lib/api'
+import { usersApi } from '../../lib/api'
+import { useAuth } from '../../hooks/useAuth'
 
 interface PinChangeModalProps {
   isOpen: boolean
@@ -8,6 +9,7 @@ interface PinChangeModalProps {
 }
 
 export function PinChangeModal({ isOpen, onClose }: PinChangeModalProps) {
+  const { user } = useAuth()
   const [currentPin, setCurrentPin] = useState('')
   const [newPin, setNewPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -62,7 +64,8 @@ export function PinChangeModal({ isOpen, onClose }: PinChangeModalProps) {
     setIsSubmitting(true)
 
     try {
-      await settingsApi.updatePin(currentPin, newPin)
+      if (!user) throw new Error('Not authenticated')
+      await usersApi.updatePin(user.id, newPin, currentPin)
       setSuccess(true)
       // Auto-close after success
       setTimeout(() => {
