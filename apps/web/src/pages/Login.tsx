@@ -65,10 +65,6 @@ export function Login(): JSX.Element {
           )}
         </div>
 
-        {/* Help text */}
-        <p className="text-center text-sm text-slate-400">
-          Default PIN: <span className="text-slate-300 font-mono">1234</span>
-        </p>
       </div>
     </main>
   )
