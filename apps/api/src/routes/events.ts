@@ -82,13 +82,19 @@ export const eventsRoutes: FastifyPluginAsync = async (
       try {
         if (type === 'start') {
           // Create new event
+          // Format timestamp to match Motion's filename format: YYYYMMDD_HHMMSS
+          const eventDate = new Date(timestamp * 1000)
+          const dateStr = eventDate.toISOString().slice(0, 10).replace(/-/g, '') // YYYYMMDD
+          const timeStr = eventDate.toISOString().slice(11, 19).replace(/:/g, '') // HHMMSS
+          const motionTimestamp = `${dateStr}_${timeStr}`
+
           const event = createEvent({
             id: `motion-${cameraId}-${eventId}`,
             cameraId,
             timestamp: timestamp || Math.floor(Date.now() / 1000),
             duration: null,
-            thumbnailPath: `${cameraId}_${new Date(timestamp * 1000).toISOString().replace(/[-:]/g, '').slice(0, 15)}.jpg`,
-            videoPath: null,
+            thumbnailPath: `${cameraId}_${motionTimestamp}.jpg`,
+            videoPath: `${cameraId}/${motionTimestamp}.mp4`,
           })
 
           // Trigger notification (non-blocking)
