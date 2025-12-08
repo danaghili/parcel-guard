@@ -22,7 +22,7 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
         │   (Public HTTPS)    │               │   (Push Notify)     │
         └──────────┬──────────┘               └──────────▲──────────┘
                    │                                     │
-                   │                                     │
+                   │ :80 (proxied)                       │
     ═══════════════╪═════════════════════════════════════╪══════════════════
                    │            TAILSCALE VPN            │
     ═══════════════╪═════════════════════════════════════╪══════════════════
@@ -36,18 +36,23 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
     │  │   :80      │◄─┤  API :3000 │◄─┤   Daemon   │  │   (HLS :8888) │   │
     │  └─────┬──────┘  └─────┬──────┘  └──────┬─────┘  └───────▲───────┘   │
     │        │               │                │                │           │
-    │        │         ┌─────▼──────┐         │                │           │
-    │        │         │   SQLite   │         │                │           │
-    │        │         │  Database  │         │                │           │
-    │        │         └────────────┘         │                │           │
-    │        │                                │                │           │
-    │        │         ┌──────────────────────▼────────────────┘           │
+    │        │ /streams/* ───────────────────────────────────►─┘           │
+    │        │ (proxy)                                                     │
+    │        │         ┌─────▼──────┐         │                            │
+    │        │         │   SQLite   │         │                            │
+    │        │         │  Database  │         │                            │
+    │        │         └────────────┘         │                            │
+    │        │                                │                            │
+    │        │         ┌──────────────────────▼────────────────┐           │
     │        │         │         /mnt/storage                  │           │
     │  ┌─────▼──────┐  │  ┌──────────┐ ┌─────────┐ ┌─────────┐ │           │
     │  │  React PWA │  │  │  clips/  │ │ thumbs/ │ │  data/  │ │           │
     │  │  (static)  │  │  │  (video) │ │ (jpeg)  │ │ (db)    │ │           │
     │  └────────────┘  │  └──────────┘ └─────────┘ └─────────┘ │           │
     │                  └───────────────────────────────────────┘           │
+    │                                                                      │
+    │   MediaMTX pulls RTSP streams from cameras, converts to HLS          │
+    │   Nginx proxies /streams/* to MediaMTX for Funnel access             │
     └──────────────────────────────────────────────────────────────────────┘
                    ▲                                     ▲
                    │ RTSP :8554                          │ RTSP :8554
@@ -60,6 +65,12 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
     │  │ Camera   │ │ MediaMTX │   │    │  │ Camera   │ │ MediaMTX │       │
     │  │ Module 3 │►│ RTSP     │   │    │  │ Module 3 │►│ RTSP     │       │
     │  └──────────┘ └──────────┘   │    │  └──────────┘ └──────────┘       │
+    │                              │    │                                  │
+    │  ┌──────────────────────┐    │    │  ┌──────────────────────┐        │
+    │  │ Health Check Service │    │    │  │ Health Check Service │        │
+    │  │ → POST /api/cameras/ │    │    │  │ → POST /api/cameras/ │        │
+    │  │   cam1/health (30s)  │    │    │  │   cam2/health (30s)  │        │
+    │  └──────────────────────┘    │    │  └──────────────────────┘        │
     │                              │    │                                  │
     │  Power: 20,000mAh USB Bank   │    │  Power: 20,000mAh USB Bank       │
     └──────────────────────────────┘    └──────────────────────────────────┘

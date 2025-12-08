@@ -635,7 +635,7 @@ Type=simple
 ExecStart=/usr/local/bin/parcelguard-health-check.sh
 Restart=always
 RestartSec=10
-Environment=HUB_URL=http://ParcelGuard.local:3000
+Environment=HUB_URL=http://HUB_TAILSCALE_IP:3000
 Environment=CAMERA_ID=YOUR_CAMERA_ID_HERE
 Environment=INTERVAL=30
 
@@ -643,7 +643,10 @@ Environment=INTERVAL=30
 WantedBy=multi-user.target
 ```
 
-> **Important:** Replace `YOUR_CAMERA_ID_HERE` with your actual camera ID from the database. You can find it by running on the hub: `sqlite3 /mnt/storage/parcelguard/data/parcelguard.db "SELECT id, name FROM cameras;"`
+> **Important:**
+> - Replace `HUB_TAILSCALE_IP` with your hub's Tailscale IP address (e.g., `100.72.88.127`). You can find it by running `tailscale ip -4` on the hub.
+> - Replace `YOUR_CAMERA_ID_HERE` with your actual camera ID from the database. You can find it by running on the hub: `sqlite3 /mnt/storage/parcelguard/data/parcelguard.db "SELECT id, name FROM cameras;"`
+> - **Why Tailscale IP?** The `.local` hostnames use mDNS which can be unreliable across different networks. Tailscale IPs work consistently whether cameras are on the same network as the hub or connected via 4G.
 
 Save, then enable and start:
 
@@ -879,6 +882,92 @@ To make it persistent across reboots:
 # Run in background
 tailscale funnel --bg 80
 ```
+
+### Configuring Stream Proxy for Funnel Access
+
+**Important:** When accessing ParcelGuard via Tailscale Funnel, users are NOT on the Tailscale VPN network. This means they can't reach camera Tailscale IPs directly for video streams. To solve this, we proxy streams through nginx on the hub.
+
+#### Step 1: Configure MediaMTX on Hub to Pull Camera Streams
+
+On the hub, edit the MediaMTX configuration:
+
+```bash
+sudo nano /etc/mediamtx/mediamtx.yml
+```
+
+Find the `paths:` section and configure it to pull from each camera:
+
+```yaml
+paths:
+  cam1:
+    source: rtsp://CAMERA1_TAILSCALE_IP:8554/stream
+  cam2:
+    source: rtsp://CAMERA2_TAILSCALE_IP:8554/stream
+```
+
+Replace `CAMERA1_TAILSCALE_IP` and `CAMERA2_TAILSCALE_IP` with your cameras' Tailscale IPs (e.g., `100.120.125.42` and `100.69.12.33`).
+
+Restart MediaMTX:
+
+```bash
+sudo systemctl restart mediamtx
+```
+
+#### Step 2: Add Stream Proxy to Nginx
+
+Edit the nginx configuration:
+
+```bash
+sudo nano /etc/nginx/sites-available/parcelguard
+```
+
+Add a `/streams/` location block inside the `server` block:
+
+```nginx
+# Proxy HLS streams from MediaMTX for Funnel access
+location /streams/ {
+    proxy_pass http://127.0.0.1:8888/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    add_header Access-Control-Allow-Origin *;
+    add_header Cache-Control no-cache;
+}
+```
+
+Test and reload nginx:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### Step 3: Update Camera Stream URLs in Database
+
+Update the camera records to use relative URLs that work through the proxy:
+
+```bash
+sqlite3 /mnt/storage/parcelguard/data/parcelguard.db
+```
+
+```sql
+UPDATE cameras SET streamUrl='/streams/cam1/index.m3u8' WHERE id='cam1';
+UPDATE cameras SET streamUrl='/streams/cam2/index.m3u8' WHERE id='cam2';
+.quit
+```
+
+#### Step 4: Verify Streams Work
+
+Test the stream URLs from your browser or curl:
+
+```bash
+# Test locally on hub
+curl -I http://localhost/streams/cam1/index.m3u8
+
+# Should return HTTP 200 with content-type: application/vnd.apple.mpegurl
+```
+
+Now streams will work both via Tailscale VPN and via Tailscale Funnel public access.
 
 ### Creating User Accounts
 
