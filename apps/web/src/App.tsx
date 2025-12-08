@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/contexts/ToastContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { AppShell } from '@/components/layout/AppShell'
 import { ToastContainer } from '@/components/ui/ToastContainer'
@@ -36,10 +37,11 @@ function PageLoader(): JSX.Element {
 
 function App(): JSX.Element {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
 
@@ -64,11 +66,12 @@ function App(): JSX.Element {
             </Route>
           </Routes>
         </Suspense>
-        <ToastContainer />
-        <OfflineIndicator />
-        <InstallPrompt />
-      </ToastProvider>
-    </AuthProvider>
+          <ToastContainer />
+          <OfflineIndicator />
+          <InstallPrompt />
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

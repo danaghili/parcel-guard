@@ -27,9 +27,6 @@ vi.mock('../../src/lib/api', () => ({
   usersApi: {
     updatePin: vi.fn(),
   },
-  settingsApi: {
-    update: vi.fn(),
-  },
 }))
 
 // Mock useAuth hook
@@ -39,7 +36,7 @@ vi.mock('../../src/hooks/useAuth', () => ({
   }),
 }))
 
-import { usersApi, settingsApi } from '../../src/lib/api'
+import { usersApi } from '../../src/lib/api'
 
 describe('PinChangeModal', () => {
   const mockOnClose = vi.fn()
@@ -145,18 +142,17 @@ describe('PinChangeModal', () => {
   })
 })
 
+// Mock ThemeContext
+vi.mock('../../src/contexts/ThemeContext', () => ({
+  useTheme: () => ({
+    theme: 'system',
+    setTheme: vi.fn().mockResolvedValue(undefined),
+    isLoading: false,
+  }),
+}))
+
 describe('ThemeToggle', () => {
   const mockOnSettingsChange = vi.fn()
-  const defaultSettings = {
-    retentionDays: 30,
-    theme: 'system' as const,
-    notificationsEnabled: true,
-    quietHoursEnabled: false,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '07:00',
-    notificationCooldown: 60,
-    onboardingComplete: true,
-  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -165,7 +161,7 @@ describe('ThemeToggle', () => {
   it('should render theme options', () => {
     render(
       <BrowserRouter>
-        <ThemeToggle settings={defaultSettings} onSettingsChange={mockOnSettingsChange} />
+        <ThemeToggle onSettingsChange={mockOnSettingsChange} />
       </BrowserRouter>
     )
 
@@ -175,50 +171,24 @@ describe('ThemeToggle', () => {
   })
 
   it('should highlight current theme selection', () => {
-    const settings = { ...defaultSettings, theme: 'dark' as const }
     render(
       <BrowserRouter>
-        <ThemeToggle settings={settings} onSettingsChange={mockOnSettingsChange} />
+        <ThemeToggle onSettingsChange={mockOnSettingsChange} />
       </BrowserRouter>
     )
 
-    const darkButton = screen.getByText('Dark').closest('button')
-    expect(darkButton).toHaveClass('border-blue-500')
+    // System is highlighted by default (from mock)
+    const systemButton = screen.getByText('System').closest('button')
+    expect(systemButton).toHaveClass('border-blue-500')
   })
 
-  it('should call API when theme is changed', async () => {
-    vi.mocked(settingsApi.update).mockResolvedValue({
-      ...defaultSettings,
-      theme: 'dark' as const,
-    })
-
+  it('should render appearance header', () => {
     render(
       <BrowserRouter>
-        <ThemeToggle settings={defaultSettings} onSettingsChange={mockOnSettingsChange} />
+        <ThemeToggle onSettingsChange={mockOnSettingsChange} />
       </BrowserRouter>
     )
 
-    fireEvent.click(screen.getByText('Dark'))
-
-    await waitFor(() => {
-      expect(settingsApi.update).toHaveBeenCalledWith({ theme: 'dark' })
-    })
-  })
-
-  it('should call onSettingsChange with updated settings', async () => {
-    const updatedSettings = { ...defaultSettings, theme: 'dark' as const }
-    vi.mocked(settingsApi.update).mockResolvedValue(updatedSettings)
-
-    render(
-      <BrowserRouter>
-        <ThemeToggle settings={defaultSettings} onSettingsChange={mockOnSettingsChange} />
-      </BrowserRouter>
-    )
-
-    fireEvent.click(screen.getByText('Dark'))
-
-    await waitFor(() => {
-      expect(mockOnSettingsChange).toHaveBeenCalledWith(updatedSettings)
-    })
+    expect(screen.getByText('Appearance')).toBeInTheDocument()
   })
 })

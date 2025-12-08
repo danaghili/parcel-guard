@@ -14,7 +14,6 @@ export function Settings(): JSX.Element {
   const [showPinChange, setShowPinChange] = useState(false)
   const [showStorage, setShowStorage] = useState(false)
   const [settings, setSettings] = useState<SettingsType | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     loadSettings()
@@ -26,8 +25,6 @@ export function Settings(): JSX.Element {
       setSettings(data)
     } catch (err) {
       console.error('Failed to load settings:', err)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -45,16 +42,7 @@ export function Settings(): JSX.Element {
       <div className="space-y-6">
         {/* Appearance */}
         <section className="bg-white dark:bg-gray-800 rounded-lg p-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <svg className="animate-spin h-5 w-5 text-blue-500" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </div>
-          ) : (
-            <ThemeToggle settings={settings} onSettingsChange={setSettings} />
-          )}
+          <ThemeToggle onSettingsChange={setSettings} />
         </section>
 
         {/* Quick Links */}

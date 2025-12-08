@@ -1,47 +1,26 @@
-import { useEffect, useState } from 'react'
-
-import { settingsApi, type Settings } from '../../lib/api'
+import { useState } from 'react'
+import { useTheme } from '@/contexts/ThemeContext'
+import type { Settings } from '@/lib/api'
 
 type Theme = 'light' | 'dark' | 'system'
 
 interface ThemeToggleProps {
-  settings: Settings | null
   onSettingsChange: (settings: Settings) => void
 }
 
-export function ThemeToggle({ settings, onSettingsChange }: ThemeToggleProps) {
-  const [theme, setTheme] = useState<Theme>(settings?.theme ?? 'system')
+export function ThemeToggle({ onSettingsChange }: ThemeToggleProps) {
+  const { theme, setTheme } = useTheme()
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (settings) {
-      setTheme(settings.theme)
-    }
-  }, [settings])
-
-  useEffect(() => {
-    // Apply theme to document
-    const root = document.documentElement
-
-    if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      root.classList.toggle('dark', prefersDark)
-    } else {
-      root.classList.toggle('dark', theme === 'dark')
-    }
-  }, [theme])
-
   const handleThemeChange = async (newTheme: Theme) => {
-    setTheme(newTheme)
     setError(null)
 
     try {
-      const updated = await settingsApi.update({ theme: newTheme })
-      onSettingsChange(updated)
+      await setTheme(newTheme)
+      // Update parent settings state
+      onSettingsChange({ theme: newTheme } as Settings)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save theme')
-      // Revert on error
-      setTheme(settings?.theme ?? 'system')
     }
   }
 
