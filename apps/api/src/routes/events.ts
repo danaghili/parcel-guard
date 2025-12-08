@@ -13,7 +13,7 @@ import { getCameraById } from '../services/cameras'
 import { sendMotionAlert } from '../services/notifications'
 import { ApiError } from '../lib/errors'
 import type { EventFilters } from '@parcelguard/shared'
-import { createReadStream, existsSync } from 'fs'
+import { createReadStream, existsSync, readdirSync } from 'fs'
 import { stat } from 'fs/promises'
 import path from 'path'
 import { optimizeImage, getBestFormat } from '../services/images'
@@ -43,6 +43,65 @@ async function getVideoDuration(videoPath: string): Promise<number | null> {
     )
     const duration = parseFloat(stdout.trim())
     return isNaN(duration) ? null : Math.round(duration)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Find actual video file for an event, accounting for timestamp drift
+ * Motion daemon may create files with timestamps a few seconds off from what we expect
+ * Returns the actual video path relative to CLIPS_PATH, or null if not found
+ */
+function findVideoFile(cameraId: string, timestamp: number, toleranceSeconds: number = 5): string | null {
+  const cameraDir = path.join(CLIPS_PATH, cameraId)
+
+  if (!existsSync(cameraDir)) {
+    return null
+  }
+
+  // Generate expected filename pattern from timestamp
+  const eventDate = new Date(timestamp * 1000)
+  const expectedPrefix = eventDate.toISOString().slice(0, 10).replace(/-/g, '') + '_' +
+    eventDate.toISOString().slice(11, 19).replace(/:/g, '')
+
+  try {
+    const files = readdirSync(cameraDir).filter(f => f.endsWith('.mp4'))
+
+    // First try exact match
+    const exactMatch = files.find(f => f === `${expectedPrefix}.mp4`)
+    if (exactMatch) {
+      return `${cameraId}/${exactMatch}`
+    }
+
+    // Otherwise find closest file within tolerance window
+    let bestMatch: string | null = null
+    let smallestDiff = Infinity
+
+    for (const file of files) {
+      // Parse timestamp from filename (format: YYYYMMDD_HHMMSS.mp4)
+      const match = file.match(/^(\d{8}_\d{6})\.mp4$/)
+      if (!match || !match[1]) continue
+
+      const fileTimestamp = match[1]
+      const year = parseInt(fileTimestamp.slice(0, 4))
+      const month = parseInt(fileTimestamp.slice(4, 6)) - 1
+      const day = parseInt(fileTimestamp.slice(6, 8))
+      const hour = parseInt(fileTimestamp.slice(9, 11))
+      const minute = parseInt(fileTimestamp.slice(11, 13))
+      const second = parseInt(fileTimestamp.slice(13, 15))
+
+      const fileDate = new Date(year, month, day, hour, minute, second)
+      const fileUnixTime = Math.floor(fileDate.getTime() / 1000)
+      const diff = Math.abs(fileUnixTime - timestamp)
+
+      if (diff <= toleranceSeconds && diff < smallestDiff) {
+        smallestDiff = diff
+        bestMatch = `${cameraId}/${file}`
+      }
+    }
+
+    return bestMatch
   } catch {
     return null
   }
@@ -455,13 +514,25 @@ export const eventsRoutes: FastifyPluginAsync = async (
         })
       }
 
-      const filePath = path.join(CLIPS_PATH, event.videoPath)
+      let videoPath = event.videoPath
+      let filePath = path.join(CLIPS_PATH, videoPath)
 
+      // If stored path doesn't exist, try to find the actual file
       if (!existsSync(filePath)) {
-        return reply.status(404).send({
-          error: 'NOT_FOUND',
-          message: 'Video file not found',
-        })
+        const actualPath = findVideoFile(event.cameraId, event.timestamp)
+        if (actualPath) {
+          videoPath = actualPath
+          filePath = path.join(CLIPS_PATH, actualPath)
+          server.log.debug(
+            { eventId: id, storedPath: event.videoPath, actualPath },
+            'Found video file with adjusted timestamp'
+          )
+        } else {
+          return reply.status(404).send({
+            error: 'NOT_FOUND',
+            message: 'Video file not found',
+          })
+        }
       }
 
       const stats = await stat(filePath)
@@ -497,13 +568,21 @@ export const eventsRoutes: FastifyPluginAsync = async (
         })
       }
 
-      const filePath = path.join(CLIPS_PATH, event.videoPath)
+      let videoPath = event.videoPath
+      let filePath = path.join(CLIPS_PATH, videoPath)
 
+      // If stored path doesn't exist, try to find the actual file
       if (!existsSync(filePath)) {
-        return reply.status(404).send({
-          error: 'NOT_FOUND',
-          message: 'Video file not found',
-        })
+        const actualPath = findVideoFile(event.cameraId, event.timestamp)
+        if (actualPath) {
+          videoPath = actualPath
+          filePath = path.join(CLIPS_PATH, actualPath)
+        } else {
+          return reply.status(404).send({
+            error: 'NOT_FOUND',
+            message: 'Video file not found',
+          })
+        }
       }
 
       const stats = await stat(filePath)

@@ -1758,9 +1758,135 @@ Tuning      Zones        Validation
 
 All hardware deployment phases are complete. Remaining work:
 
-1. **Phase 3B** - Tune motion detection sensitivity with real cameras
-2. **Phase 6B** - Add motion zone editor UI with live preview
-3. **Phase 7B** - Final hardware validation and production sign-off
+1. **Camera Network Setup** - Configure cameras for deployment network with 4G fallback
+2. **Phase 3B** - Tune motion detection sensitivity with real cameras
+3. **Phase 6B** - Add motion zone editor UI with live preview
+4. **Phase 7B** - Final hardware validation and production sign-off
+
+---
+
+## Pre-Deployment: Camera Network Configuration
+
+### Objective
+Configure cameras to connect to the deployment WiFi network (where they'll be installed) with 4G hotspot as a fallback when the primary network is unavailable.
+
+### Prerequisites
+- SSH access to cameras via Tailscale
+- Deployment WiFi credentials (SSID + password)
+- 4G hotspot credentials (SSID + password)
+
+### Tasks
+
+#### Configure Multi-Network WiFi with Priorities
+
+On each camera (cam1: `100.120.125.42`, cam2: `100.69.12.33`):
+
+```bash
+# Add primary network (deployment location)
+sudo nmcli connection add type wifi con-name "Primary-WiFi" ssid "DEPLOYMENT_SSID" \
+  wifi-sec.key-mgmt wpa-psk wifi-sec.psk "DEPLOYMENT_PASSWORD" \
+  connection.autoconnect yes connection.autoconnect-priority 10
+
+# Add 4G hotspot as fallback
+sudo nmcli connection add type wifi con-name "4G-Fallback" ssid "4G_HOTSPOT_SSID" \
+  wifi-sec.key-mgmt wpa-psk wifi-sec.psk "4G_HOTSPOT_PASSWORD" \
+  connection.autoconnect yes connection.autoconnect-priority 5
+
+# Optionally keep current network as lowest priority (for testing)
+sudo nmcli connection modify "netplan-wlan0-RavenWeb" connection.autoconnect-priority 1
+
+# Verify configuration
+nmcli connection show
+```
+
+**Priority Behavior:**
+- NetworkManager will connect to the highest priority available network
+- Priority 10: Primary deployment network (first choice)
+- Priority 5: 4G hotspot fallback (if primary unavailable)
+- Priority 1: Current test network (lowest priority)
+
+### Acceptance Criteria
+- [ ] Both cameras connect to deployment WiFi when available
+- [ ] Cameras automatically fall back to 4G if deployment WiFi drops
+- [ ] Tailscale maintains connectivity across network switches
+- [ ] Camera streams remain accessible via Tailscale IPs
+
+---
+
+## Optional Enhancement: PIR Sensor Motion Trigger
+
+### Overview
+Add hardware PIR (Passive Infrared) sensors to Pi Zero cameras to enable on-demand streaming. This eliminates continuous streaming over 4G, reducing data usage from ~40-80 GB/day to ~2-5 GB/day.
+
+**Note:** This is optional - an unlimited 4G data plan is a simpler alternative.
+
+### Why PIR Instead of Software Motion Detection?
+The Pi Zero's single-core ARM CPU cannot efficiently decode H.264 video streams. Testing showed motion daemon used ~60-70% CPU just for decoding, making software-based detection impractical on Pi Zero.
+
+### Hardware Required
+
+| Item | Qty | Price | Notes |
+|------|-----|-------|-------|
+| HC-SR501 PIR sensor | 2 | ~$5-8 | Adjustable sensitivity and range |
+| Female-to-female jumper wires | 6 | ~$2 | Often included with sensors |
+
+**Total:** ~$10 for both cameras
+
+### Wiring (3 wires per camera)
+
+```
+HC-SR501          Pi Zero
+─────────         ────────
+VCC      ───────► 5V (Pin 2)
+GND      ───────► GND (Pin 6)
+OUT      ───────► GPIO17 (Pin 11)
+```
+
+### Software Changes Required
+
+1. **Camera streaming service** - Modify to start/stop on demand (currently always-on)
+2. **PIR monitor script** - Watch GPIO pin, trigger stream on motion
+3. **Hub API** - Handle on-demand stream connections
+
+### Implementation Sketch
+
+```bash
+#!/bin/bash
+# /usr/local/bin/pir-trigger.sh - runs on Pi Zero
+
+GPIO_PIN=17
+STREAM_DURATION=60  # seconds to stream after motion
+
+# Setup GPIO
+echo "$GPIO_PIN" > /sys/class/gpio/export 2>/dev/null
+echo "in" > /sys/class/gpio/gpio$GPIO_PIN/direction
+
+while true; do
+    if [ "$(cat /sys/class/gpio/gpio$GPIO_PIN/value)" == "1" ]; then
+        echo "Motion detected - starting stream"
+        systemctl start camera-stream
+        curl -X POST "http://hub-tailscale-ip:3000/api/motion/events" \
+            -d '{"cameraId":"cam1","type":"start"}'
+
+        sleep $STREAM_DURATION
+
+        curl -X POST "http://hub-tailscale-ip:3000/api/motion/events" \
+            -d '{"cameraId":"cam1","type":"end"}'
+        systemctl stop camera-stream
+    fi
+    sleep 0.5
+done
+```
+
+### Data Savings Estimate
+
+| Setup | Daily Data (2 cameras) |
+|-------|------------------------|
+| Continuous streaming | ~40-80 GB |
+| PIR-triggered (~30 min/day) | ~2-5 GB |
+
+### Decision
+**Deferred** - May use unlimited 4G data plan instead. Revisit if data costs become a concern.
 
 ### Completed Hardware Phases
 
