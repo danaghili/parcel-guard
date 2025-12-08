@@ -226,8 +226,9 @@ export function ComponentName({ prop1, prop2 }: ComponentNameProps) {
 
 Before writing any code, thoroughly analyse and plan:
 
-1. **Review Architecture**
+1. **Review Architecture & Data Lineage**
    - Read `ARCHITECTURE.md` to understand the current system design
+   - **Check the Data Lineage section** to understand downstream impacts
    - Identify which layers will be affected (hardware, API, database, frontend)
    - Note any architectural constraints or patterns to follow
 
@@ -241,6 +242,7 @@ Before writing any code, thoroughly analyse and plan:
    - Components, hooks, or utilities needed
    - Database changes (migrations required?)
    - API changes (new routes, modified endpoints?)
+   - **Data lineage impact** (what downstream components are affected?)
    - Impact assessment on existing functionality (BE THOROUGH!)
    - Required changes to existing unit & E2E test scripts
    - New test scripts to be created

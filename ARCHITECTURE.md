@@ -406,6 +406,199 @@ Include token in Authorization header for API calls
 
 ---
 
+## Data Lineage & Dependencies
+
+This section documents how data flows through the system and what depends on what. **Use this to assess impact before making changes.**
+
+### Core Entity Relationships
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DATA LINEAGE MAP                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────┐         ┌─────────────┐         ┌──────────────┐               │
+│  │  User   │────────►│   Session   │────────►│ AuthContext  │               │
+│  │ (DB)    │         │    (DB)     │         │  (Frontend)  │               │
+│  └────┬────┘         └─────────────┘         └──────┬───────┘               │
+│       │                                             │                       │
+│       │ isAdmin                                     │ user.isAdmin          │
+│       ▼                                             ▼                       │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │                    PERMISSION GATES                              │        │
+│  │  • Users page visibility (admin only)                           │        │
+│  │  • User CRUD operations (admin only)                            │        │
+│  │  • Delete other users (admin only)                              │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│                                                                             │
+│  ┌─────────┐         ┌─────────────┐         ┌──────────────┐               │
+│  │ Camera  │────────►│MotionEvent  │────────►│  EventCard   │               │
+│  │  (DB)   │         │    (DB)     │         │  (Frontend)  │               │
+│  └────┬────┘         └──────┬──────┘         └──────────────┘               │
+│       │                     │                                               │
+│       │                     │ thumbnailPath, videoPath                      │
+│       │                     ▼                                               │
+│       │              ┌─────────────┐                                        │
+│       │              │ File System │                                        │
+│       │              │ clips/      │                                        │
+│       │              │ thumbnails/ │                                        │
+│       │              └─────────────┘                                        │
+│       │                                                                     │
+│       │ streamUrl                                                           │
+│       ▼                                                                     │
+│  ┌──────────────────────────────────────────────────────────────────┐       │
+│  │                    STREAM CONSUMERS                               │       │
+│  │  • Motion daemon (motion.conf netcam_url)                        │       │
+│  │  • MediaMTX (HLS conversion)                                     │       │
+│  │  • CameraPlayer component (HLS.js)                               │       │
+│  │  • Live page grid                                                │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                                                             │
+│  ┌─────────┐                                                                │
+│  │Settings │────────────────────────────────────────────────────────┐       │
+│  │  (DB)   │                                                        │       │
+│  └────┬────┘                                                        │       │
+│       │                                                             │       │
+│       ├─► retentionDays ──► Storage cleanup service                 │       │
+│       ├─► theme ──────────► ThemeProvider (CSS variables)           │       │
+│       ├─► notificationsEnabled ──► Notification service             │       │
+│       ├─► quietHours* ────► Notification service (suppress)         │       │
+│       ├─► notificationCooldown ──► Notification service (debounce)  │       │
+│       └─► onboardingComplete ──► OnboardingWizard visibility        │       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Field-Level Impact Matrix
+
+When changing a field, check all its consumers:
+
+#### User Table
+
+| Field | Consumers | Impact of Change |
+|-------|-----------|------------------|
+| `id` | sessions.userId, API routes, AuthContext | **CRITICAL** - FK constraint, breaks auth |
+| `username` | Login form, user list, display | Medium - UI updates needed |
+| `pinHash` | Auth service (login) | Low - internal only |
+| `displayName` | AuthContext.user, Settings page, header | Low - display only |
+| `isAdmin` | requireAdmin middleware, Users page, Settings link | **HIGH** - permission gates |
+| `enabled` | Auth service (login rejection) | Medium - blocks login |
+
+#### Camera Table
+
+| Field | Consumers | Impact of Change |
+|-------|-----------|------------------|
+| `id` | motion_events.cameraId, Motion config, API routes | **CRITICAL** - FK, config files |
+| `name` | CameraCard, EventCard, notifications, Motion config | Medium - display + config |
+| `streamUrl` | Motion daemon, MediaMTX, CameraPlayer | **CRITICAL** - breaks streaming |
+| `status` | CameraCard, Dashboard, System health | Low - display only |
+| `lastSeen` | CameraCard (offline indicator) | Low - display only |
+| `motionSensitivity` | Motion daemon config | Medium - requires Motion restart |
+| `notificationsEnabled` | Notification service | Low - per-camera toggle |
+
+#### MotionEvent Table
+
+| Field | Consumers | Impact of Change |
+|-------|-----------|------------------|
+| `id` | API routes, EventCard links, video/thumbnail URLs | **CRITICAL** - breaks navigation |
+| `cameraId` | Event filtering, EventCard display, FK | **HIGH** - FK constraint |
+| `timestamp` | EventCard, EventList sorting, filtering | High - affects ordering |
+| `thumbnailPath` | EventCard image, API thumbnail endpoint | Medium - breaks images |
+| `videoPath` | EventDetail player, download, API video endpoint | Medium - breaks playback |
+| `isImportant` | EventCard badge, filtering, retention (skip delete) | Medium - affects cleanup |
+| `isFalseAlarm` | EventCard badge, filtering | Low - display only |
+
+#### Settings Table
+
+| Field | Consumers | Impact of Change |
+|-------|-----------|------------------|
+| `retentionDays` | Storage cleanup service, StorageSettings UI | Medium - affects auto-delete |
+| `theme` | ThemeProvider, localStorage sync | Low - UI preference |
+| `notificationsEnabled` | Notification service, NotificationSettings | Medium - disables alerts |
+| `quietHoursStart/End` | Notification service | Low - time window only |
+| `notificationCooldown` | Notification service | Low - debounce timing |
+
+### Frontend State Dependencies
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND STATE FLOW                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  localStorage                                                               │
+│  ├── auth_token ───────► ApiClient.token ───────► Authorization header      │
+│  └── theme ────────────► ThemeProvider ─────────► CSS variables             │
+│                                                                             │
+│  AuthContext (global)                                                       │
+│  ├── isAuthenticated ──► ProtectedRoute ────────► redirect to /login        │
+│  ├── user.isAdmin ─────► Settings page ─────────► "User Management" link    │
+│  │                   └─► Users page ────────────► route access              │
+│  └── user.id ──────────► PIN change ────────────► API endpoint              │
+│                                                                             │
+│  ToastContext (global)                                                      │
+│  └── toast() ──────────► Any component ─────────► success/error feedback    │
+│                                                                             │
+│  URL Query Params                                                           │
+│  └── /events?cameraId=X&startDate=Y ──► EventFilters ──► eventsApi.list()   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### API Response → Component Mapping
+
+| API Endpoint | Response Data | Consuming Components |
+|--------------|---------------|----------------------|
+| `GET /api/auth/verify` | `{ user }` | AuthContext → entire app |
+| `GET /api/cameras` | `Camera[]` | Dashboard, Live, CameraGrid, EventFilters |
+| `GET /api/cameras/:id` | `Camera` | CameraSettings, Camera (fullscreen) |
+| `GET /api/events` | `{ events, total, hasMore }` | Events page, EventList |
+| `GET /api/events/:id` | `MotionEvent` | EventDetail page |
+| `GET /api/events/stats` | `{ today, important, ... }` | Dashboard (EventStats) |
+| `GET /api/users` | `User[]` | Users page (admin) |
+| `GET /api/settings` | `Settings` | Settings page, NotificationSettings, ThemeToggle |
+| `GET /api/system/status` | `{ version, uptime, memory, cameras }` | System page, Dashboard |
+| `GET /api/system/storage` | `StorageStats` | System page, StorageSettings |
+
+### File System Dependencies
+
+```
+/mnt/storage/parcelguard/
+├── data/parcelguard.db
+│   └── Referenced by: DATABASE_PATH env var → API startup
+│
+├── clips/{cameraId}/{timestamp}.mp4
+│   ├── Written by: Motion daemon (movie_filename config)
+│   ├── Referenced by: motion_events.videoPath
+│   └── Served by: GET /api/events/:id/video
+│
+└── thumbnails/{cameraId}_{timestamp}.jpg
+    ├── Written by: Motion daemon (picture_filename config)
+    ├── Referenced by: motion_events.thumbnailPath
+    └── Served by: GET /api/events/:id/thumbnail
+```
+
+### Configuration File Dependencies
+
+| Config File | Depends On | Affects |
+|-------------|------------|---------|
+| `/etc/motion/camera1.conf` | camera.streamUrl (manual sync) | Motion detection for cam1 |
+| `/etc/motion/camera2.conf` | camera.streamUrl (manual sync) | Motion detection for cam2 |
+| `/etc/nginx/sites-available/parcelguard` | apps/web/dist path | Static file serving |
+| `/etc/systemd/system/parcelguard-api.service` | DATABASE_PATH, PORT | API startup |
+
+### Change Impact Checklist
+
+Before modifying any of the following, check downstream consumers:
+
+- [ ] **Database schema change?** → Check API routes, services, frontend types, test fixtures
+- [ ] **API response format change?** → Check frontend api.ts types, consuming components
+- [ ] **Camera streamUrl change?** → Update Motion config, restart Motion daemon
+- [ ] **User permission change?** → Check requireAdmin middleware, frontend isAdmin gates
+- [ ] **Settings key change?** → Check SettingsService, frontend settingsApi, UI components
+- [ ] **File path change?** → Check Motion config, API file serving, nginx config
+
+---
+
 ## Services (Hub)
 
 | Service | Type | Port | Description |
