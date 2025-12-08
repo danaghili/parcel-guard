@@ -327,6 +327,7 @@ export const eventsRoutes: FastifyPluginAsync = async (
 
   /**
    * Get single event by ID
+   * Also corrects duration from actual video file if it differs from stored value
    */
   server.get<{ Params: EventParams }>(
     '/events/:id',
@@ -340,6 +341,34 @@ export const eventsRoutes: FastifyPluginAsync = async (
           error: 'NOT_FOUND',
           message: 'Event not found',
         })
+      }
+
+      // Try to get actual video duration and correct if needed
+      if (event.videoPath) {
+        let videoPath = event.videoPath
+        let filePath = path.join(CLIPS_PATH, videoPath)
+
+        // Find actual file if stored path doesn't exist
+        if (!existsSync(filePath)) {
+          const actualPath = findVideoFile(event.cameraId, event.timestamp)
+          if (actualPath) {
+            videoPath = actualPath
+            filePath = path.join(CLIPS_PATH, actualPath)
+          }
+        }
+
+        if (existsSync(filePath)) {
+          const actualDuration = await getVideoDuration(videoPath)
+          if (actualDuration !== null && actualDuration !== event.duration) {
+            // Update database with correct duration
+            updateEvent(id, { duration: actualDuration })
+            event.duration = actualDuration
+            server.log.debug(
+              { eventId: id, oldDuration: event.duration, newDuration: actualDuration },
+              'Corrected event duration from video file'
+            )
+          }
+        }
       }
 
       return reply.send({
