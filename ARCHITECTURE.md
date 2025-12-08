@@ -1,0 +1,543 @@
+# ParcelGuard - System Architecture
+
+## Overview
+
+ParcelGuard is a DIY multi-camera security system for monitoring communal areas in residential buildings, focused on detecting and recording parcel theft. The system consists of battery-powered camera units, a central processing hub, and a mobile-accessible web application.
+
+**Version:** 0.9.0
+**Last Updated:** December 2024
+
+---
+
+## System Diagram
+
+```
+                                    INTERNET
+                                        │
+                    ┌───────────────────┴───────────────────┐
+                    │                                       │
+                    ▼                                       ▼
+        ┌─────────────────────┐               ┌─────────────────────┐
+        │   Tailscale Funnel  │               │     ntfy.sh         │
+        │   (Public HTTPS)    │               │   (Push Notify)     │
+        └──────────┬──────────┘               └──────────▲──────────┘
+                   │                                     │
+                   │                                     │
+    ═══════════════╪═════════════════════════════════════╪══════════════════
+                   │            TAILSCALE VPN            │
+    ═══════════════╪═════════════════════════════════════╪══════════════════
+                   │                                     │
+                   ▼                                     │
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                         PI 4 HUB (100.72.88.127)                     │
+    │                                                                      │
+    │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────────┐   │
+    │  │   Nginx    │  │  Fastify   │  │   Motion   │  │   MediaMTX    │   │
+    │  │   :80      │◄─┤  API :3000 │◄─┤   Daemon   │  │   (HLS :8888) │   │
+    │  └─────┬──────┘  └─────┬──────┘  └──────┬─────┘  └───────▲───────┘   │
+    │        │               │                │                │           │
+    │        │         ┌─────▼──────┐         │                │           │
+    │        │         │   SQLite   │         │                │           │
+    │        │         │  Database  │         │                │           │
+    │        │         └────────────┘         │                │           │
+    │        │                                │                │           │
+    │        │         ┌──────────────────────▼────────────────┘           │
+    │        │         │         /mnt/storage                  │           │
+    │  ┌─────▼──────┐  │  ┌──────────┐ ┌─────────┐ ┌─────────┐ │           │
+    │  │  React PWA │  │  │  clips/  │ │ thumbs/ │ │  data/  │ │           │
+    │  │  (static)  │  │  │  (video) │ │ (jpeg)  │ │ (db)    │ │           │
+    │  └────────────┘  │  └──────────┘ └─────────┘ └─────────┘ │           │
+    │                  └───────────────────────────────────────┘           │
+    └──────────────────────────────────────────────────────────────────────┘
+                   ▲                                     ▲
+                   │ RTSP :8554                          │ RTSP :8554
+                   │ (via Tailscale)                     │ (via Tailscale)
+    ┌──────────────┴───────────────┐    ┌───────────────┴──────────────────┐
+    │  PI ZERO 2W - CAM1           │    │  PI ZERO 2W - CAM2               │
+    │  (100.120.125.42)            │    │  (100.69.12.33)                  │
+    │                              │    │                                  │
+    │  ┌──────────┐ ┌──────────┐   │    │  ┌──────────┐ ┌──────────┐       │
+    │  │ Camera   │ │ MediaMTX │   │    │  │ Camera   │ │ MediaMTX │       │
+    │  │ Module 3 │►│ RTSP     │   │    │  │ Module 3 │►│ RTSP     │       │
+    │  └──────────┘ └──────────┘   │    │  └──────────┘ └──────────┘       │
+    │                              │    │                                  │
+    │  Power: 20,000mAh USB Bank   │    │  Power: 20,000mAh USB Bank       │
+    └──────────────────────────────┘    └──────────────────────────────────┘
+```
+
+---
+
+## Hardware Components
+
+### Central Hub
+
+| Component | Specification | Purpose |
+|-----------|---------------|---------|
+| Raspberry Pi 4 | 4GB RAM | Central processing, API server, motion detection |
+| Storage | microSD 32GB + USB SSD | OS boot + video/data storage |
+| Case | Argon ONE M.2 | Cooling + SSD mounting |
+| Power | Official Pi 4 USB-C 5.1V 3A | Continuous power |
+| Network | WiFi (home network) + Tailscale VPN | Local + remote access |
+
+### Camera Units (×2)
+
+| Component | Specification | Purpose |
+|-----------|---------------|---------|
+| Raspberry Pi Zero 2W | Headerless | Streaming unit |
+| Camera | Camera Module 3 (or OV5647) | 1080p video capture |
+| Storage | microSD 16GB | OS only (no local recording) |
+| Power | 20,000mAh USB bank | ~36-48 hours runtime |
+| Network | 4G WiFi + Tailscale VPN | Cross-network streaming |
+
+### Network Topology
+
+| Device | Local IP | Tailscale IP | Hostname |
+|--------|----------|--------------|----------|
+| Hub | 192.168.x.x | 100.72.88.127 | parcelguard-hub |
+| Cam1 | 192.168.x.x | 100.120.125.42 | parcelguard-cam1 |
+| Cam2 | 192.168.x.x | 100.69.12.33 | parcelguard-cam2 |
+
+---
+
+## Software Architecture
+
+### Tech Stack
+
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| Frontend | React 18 + TypeScript + Tailwind CSS | PWA mobile app |
+| Backend | Node.js + Fastify + TypeScript | REST API server |
+| Database | SQLite (better-sqlite3) | Data persistence |
+| Streaming | MediaMTX | RTSP to HLS conversion |
+| Motion | Motion daemon | Motion detection + recording |
+| Notifications | ntfy.sh | Push notifications |
+| Remote Access | Tailscale + Funnel | VPN + public HTTPS |
+
+### Project Structure
+
+```
+parcelguard/
+├── apps/
+│   ├── api/                    # Backend API (Fastify)
+│   │   ├── src/
+│   │   │   ├── db/             # Database layer
+│   │   │   │   ├── migrations/ # SQL schema migrations
+│   │   │   │   ├── index.ts    # Database connection
+│   │   │   │   └── seed.ts     # Development data seeding
+│   │   │   ├── middleware/     # Auth middleware
+│   │   │   ├── routes/         # API route handlers
+│   │   │   │   ├── auth.ts     # /api/auth/*
+│   │   │   │   ├── cameras.ts  # /api/cameras/*
+│   │   │   │   ├── events.ts   # /api/events/*
+│   │   │   │   ├── settings.ts # /api/settings/*
+│   │   │   │   ├── system.ts   # /api/system/*
+│   │   │   │   └── users.ts    # /api/users/*
+│   │   │   ├── services/       # Business logic
+│   │   │   │   ├── auth.ts     # Authentication
+│   │   │   │   ├── cameras.ts  # Camera management
+│   │   │   │   ├── events.ts   # Event CRUD
+│   │   │   │   ├── notifications.ts  # Push notifications
+│   │   │   │   ├── ntfy.ts     # ntfy.sh client
+│   │   │   │   ├── storage.ts  # Disk management
+│   │   │   │   └── users.ts    # User management
+│   │   │   └── index.ts        # Server entry point
+│   │   └── tests/              # Unit tests
+│   │
+│   └── web/                    # Frontend PWA (React)
+│       ├── src/
+│       │   ├── components/     # React components
+│       │   │   ├── ui/         # Generic (Button, Modal, Toast)
+│       │   │   ├── cameras/    # Camera-related
+│       │   │   ├── events/     # Event-related
+│       │   │   ├── settings/   # Settings-related
+│       │   │   └── system/     # System health
+│       │   ├── contexts/       # React contexts
+│       │   │   ├── AuthContext.tsx    # Auth state
+│       │   │   └── ToastContext.tsx   # Notifications
+│       │   ├── hooks/          # Custom hooks
+│       │   │   ├── useAuth.ts
+│       │   │   ├── useHlsStream.ts
+│       │   │   ├── useOfflineData.ts
+│       │   │   └── ...
+│       │   ├── lib/            # Utilities
+│       │   │   └── api.ts      # API client
+│       │   ├── pages/          # Page components
+│       │   │   ├── Dashboard.tsx
+│       │   │   ├── Live.tsx
+│       │   │   ├── Events.tsx
+│       │   │   ├── EventDetail.tsx
+│       │   │   ├── Settings.tsx
+│       │   │   ├── Users.tsx
+│       │   │   ├── Cameras.tsx
+│       │   │   ├── System.tsx
+│       │   │   └── Login.tsx
+│       │   └── App.tsx         # Router + providers
+│       └── tests/              # Unit + E2E tests
+│
+├── packages/
+│   └── shared/                 # Shared TypeScript types
+│       └── src/types.ts
+│
+├── scripts/
+│   ├── pi-hub/                 # Hub setup scripts
+│   └── pi-zero/                # Camera setup scripts
+│
+└── config/
+    └── motion/                 # Motion daemon configs
+```
+
+---
+
+## Database Schema
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              SQLite Database                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────────┐       ┌─────────────────────────────────────────┐  │
+│  │     users       │       │              motion_events              │  │
+│  ├─────────────────┤       ├─────────────────────────────────────────┤  │
+│  │ id (PK)         │       │ id (PK)                                 │  │
+│  │ username (UQ)   │       │ cameraId (FK → cameras.id)              │  │
+│  │ pinHash         │       │ timestamp                               │  │
+│  │ displayName     │       │ duration                                │  │
+│  │ isAdmin         │       │ thumbnailPath                           │  │
+│  │ enabled         │       │ videoPath                               │  │
+│  │ createdAt       │       │ isImportant                             │  │
+│  │ updatedAt       │       │ isFalseAlarm                            │  │
+│  └────────┬────────┘       │ createdAt                               │  │
+│           │                └──────────────────┬──────────────────────┘  │
+│           │                                   │                         │
+│           ▼                                   ▼                         │
+│  ┌─────────────────┐                ┌─────────────────┐                 │
+│  │    sessions     │                │     cameras     │                 │
+│  ├─────────────────┤                ├─────────────────┤                 │
+│  │ id (PK)         │                │ id (PK)         │                 │
+│  │ token (UQ)      │                │ name            │                 │
+│  │ userId (FK)     │───────────────►│ streamUrl       │                 │
+│  │ createdAt       │                │ status          │                 │
+│  │ expiresAt       │                │ lastSeen        │                 │
+│  └─────────────────┘                │ motionSensitivity│                │
+│                                     │ motionZones     │                 │
+│  ┌─────────────────┐                │ notificationsEnabled│             │
+│  │    settings     │                │ createdAt       │                 │
+│  ├─────────────────┤                │ updatedAt       │                 │
+│  │ key (PK)        │                └─────────────────┘                 │
+│  │ value           │                                                    │
+│  │ updatedAt       │                                                    │
+│  └─────────────────┘                                                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Tables
+
+| Table | Purpose | Key Fields |
+|-------|---------|------------|
+| `users` | User accounts | username, pinHash, isAdmin, enabled |
+| `sessions` | Auth sessions | token, userId, expiresAt |
+| `cameras` | Camera config | name, streamUrl, status, notificationsEnabled |
+| `motion_events` | Recorded events | cameraId, timestamp, videoPath, isImportant |
+| `settings` | App settings | key-value pairs (theme, retention, quiet hours) |
+
+---
+
+## API Routes
+
+### Authentication
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/login` | No | Login with username + PIN |
+| POST | `/api/auth/logout` | Yes | Invalidate session |
+| GET | `/api/auth/verify` | Yes | Verify session validity |
+
+### Users
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/users` | Admin | List all users |
+| POST | `/api/users` | Admin | Create new user |
+| GET | `/api/users/:id` | Yes | Get user details |
+| PUT | `/api/users/:id` | Yes* | Update user |
+| DELETE | `/api/users/:id` | Admin | Disable user |
+| PUT | `/api/users/:id/pin` | Yes* | Change PIN |
+
+*Self or admin
+
+### Cameras
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/cameras` | Yes | List all cameras |
+| POST | `/api/cameras` | Yes | Add new camera |
+| GET | `/api/cameras/:id` | Yes | Get camera details |
+| PUT | `/api/cameras/:id` | Yes | Update camera settings |
+| DELETE | `/api/cameras/:id` | Yes | Remove camera |
+| GET | `/api/cameras/:id/health` | No | Camera health check |
+| POST | `/api/cameras/test-stream` | Yes | Test stream URL |
+
+### Events
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/events` | Yes | List events (paginated, filterable) |
+| GET | `/api/events/:id` | Yes | Get event details |
+| PUT | `/api/events/:id` | Yes | Update event (important/false alarm) |
+| DELETE | `/api/events/:id` | Yes | Delete event |
+| POST | `/api/events/bulk-delete` | Yes | Delete multiple events |
+| GET | `/api/events/:id/thumbnail` | Yes | Serve thumbnail image |
+| GET | `/api/events/:id/video` | Yes | Serve video clip |
+| GET | `/api/events/:id/download` | Yes | Download video clip |
+| GET | `/api/events/stats` | Yes | Event statistics |
+
+### System
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/system/status` | Yes | System health status |
+| GET | `/api/system/storage` | Yes | Storage usage info |
+| POST | `/api/system/storage/cleanup` | Yes | Trigger manual cleanup |
+
+### Settings
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/settings` | Yes | Get all settings |
+| PUT | `/api/settings` | Yes | Update settings |
+| GET | `/api/notifications/status` | Yes | Notification config status |
+| POST | `/api/notifications/test` | Yes | Send test notification |
+
+### Motion Webhook
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/frigate/events` | No* | Receive motion events |
+
+*Internal only (from Motion daemon)
+
+---
+
+## Frontend Pages
+
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | Dashboard | Overview with camera status, recent events, quick stats |
+| `/login` | Login | Username + PIN authentication |
+| `/live` | Live | Camera grid with live HLS streams |
+| `/camera/:id` | Camera | Single camera fullscreen view |
+| `/events` | Events | Event list with filtering and pagination |
+| `/events/:id` | EventDetail | Video player with event actions |
+| `/settings` | Settings | App settings, theme, notifications |
+| `/cameras` | Cameras | Camera management (add/edit/delete) |
+| `/cameras/:id` | CameraSettings | Individual camera settings |
+| `/users` | Users | User management (admin only) |
+| `/system` | System | System health dashboard |
+
+---
+
+## Data Flow
+
+### Live Streaming
+
+```
+Camera Module → rpicam-vid → MediaMTX (RTSP :8554)
+                                 │
+                                 │ Tailscale VPN
+                                 ▼
+                    Hub MediaMTX (HLS :8888)
+                                 │
+                                 ▼
+                    Nginx → React PWA → HLS.js Player
+```
+
+### Motion Detection & Recording
+
+```
+Camera RTSP Stream
+        │
+        ▼
+   Motion Daemon ─────► Detect Motion
+        │                    │
+        │              ┌─────┴─────┐
+        │              ▼           ▼
+        │         Save Video   Save Thumbnail
+        │         (/clips/)    (/thumbnails/)
+        │              │           │
+        │              └─────┬─────┘
+        │                    │
+        ▼                    ▼
+  motion-event.sh ─────► POST /api/frigate/events
+                              │
+                              ▼
+                    Create motion_events record
+                              │
+                              ▼
+                    Send ntfy.sh notification
+```
+
+### Authentication Flow
+
+```
+User enters username + PIN
+        │
+        ▼
+POST /api/auth/login
+        │
+        ▼
+Verify user exists & enabled
+        │
+        ▼
+Compare PIN hash (bcrypt)
+        │
+        ▼
+Create session (token, userId, expiresAt)
+        │
+        ▼
+Return { token, user: { id, username, displayName, isAdmin } }
+        │
+        ▼
+Store token in localStorage
+        │
+        ▼
+Include token in Authorization header for API calls
+```
+
+---
+
+## Services (Hub)
+
+| Service | Type | Port | Description |
+|---------|------|------|-------------|
+| parcelguard-api | systemd | 3000 | Fastify API server |
+| nginx | systemd | 80 | Reverse proxy + static files |
+| motion | systemd | 8080 | Motion detection daemon |
+| tailscaled | systemd | - | Tailscale VPN daemon |
+
+### Systemd Services
+
+```bash
+# Check all services
+sudo systemctl status parcelguard-api nginx motion tailscaled
+
+# View logs
+journalctl -u parcelguard-api -f
+journalctl -u motion -f
+```
+
+---
+
+## Storage Layout
+
+```
+/mnt/storage/parcelguard/
+├── data/
+│   └── parcelguard.db          # SQLite database
+├── clips/
+│   ├── cam1/
+│   │   └── 20241207_143022.mp4 # Motion clips
+│   └── cam2/
+│       └── 20241207_152145.mp4
+└── thumbnails/
+    ├── cam1_20241207_143022.jpg
+    └── cam2_20241207_152145.jpg
+```
+
+### Retention Policy
+
+- Default retention: 14 days
+- Events marked "important" are never auto-deleted
+- Manual cleanup available via Settings or API
+
+---
+
+## Security
+
+### Authentication
+
+- Multi-user system with username + PIN (4-8 digits)
+- bcrypt password hashing (10 rounds)
+- Session tokens (24-hour expiry)
+- Rate limiting on login (5 attempts/minute)
+
+### Network
+
+- Tailscale VPN for cross-network access (encrypted)
+- Tailscale Funnel for public HTTPS access
+- No port forwarding required
+- Internal services not exposed to internet
+
+### Access Control
+
+- Admin users can manage other users
+- Non-admin users can only change their own PIN
+- Camera health endpoint is unauthenticated (internal only)
+
+---
+
+## Environment Variables
+
+### API Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3000 | API server port |
+| `NODE_ENV` | development | Environment mode |
+| `DATABASE_PATH` | ./data/parcelguard.db | SQLite database path |
+| `CLIPS_PATH` | ./clips | Video clips directory |
+| `THUMBNAILS_PATH` | ./thumbnails | Thumbnail directory |
+| `NTFY_TOPIC` | - | ntfy.sh topic for notifications |
+| `NTFY_SERVER` | https://ntfy.sh | ntfy server URL |
+| `APP_URL` | - | Base URL for deep links |
+
+### Web App
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | /api | API base URL |
+
+---
+
+## Monitoring
+
+### Health Checks
+
+- Camera health: `/api/cameras/:id/health` (1-minute interval)
+- System status: `/api/system/status`
+- Storage usage: `/api/system/storage`
+
+### Logs
+
+```bash
+# API logs
+journalctl -u parcelguard-api -f
+
+# Motion logs
+journalctl -u motion -f
+cat /var/log/motion/motion.log
+
+# Nginx access logs
+tail -f /var/log/nginx/access.log
+```
+
+---
+
+## Deployment
+
+### Access URLs
+
+| Access Type | URL |
+|-------------|-----|
+| Local (same network) | http://parcelguard-hub.local |
+| Tailscale VPN | http://100.72.88.127 |
+| Public (Funnel) | https://parcelguard-hub.tail[xxxxx].ts.net |
+
+### Default Credentials
+
+- **Username:** admin
+- **PIN:** 2808
+
+---
+
+*This document should be updated whenever significant architectural changes are made.*

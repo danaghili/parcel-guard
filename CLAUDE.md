@@ -13,9 +13,10 @@
 - **Build Tool:** Vite
 
 ### Key Documentation
-- `HARDWARE_SPEC.md` - Hardware components and architecture
+- `ARCHITECTURE.md` - **Comprehensive technical architecture** (start here for system overview)
+- `HARDWARE_SPEC.md` - Hardware components and specifications
 - `SCOPE_OF_WORK.md` - Feature specifications and development phases
-- `DEPLOYMENT_SPEC.md` - Deployment architecture and setup procedures
+- `DEPLOYMENT_SPEC.md` - Deployment procedures and setup guides
 - `DEVELOPMENT_PLAN.md` - Phase-by-phase implementation plan
 - `CHANGELOG.md` - Version history and changes
 - `README.md` - Project setup and usage
@@ -225,20 +226,27 @@ export function ComponentName({ prop1, prop2 }: ComponentNameProps) {
 
 Before writing any code, thoroughly analyse and plan:
 
-1. **Assess Current State**
+1. **Review Architecture**
+   - Read `ARCHITECTURE.md` to understand the current system design
+   - Identify which layers will be affected (hardware, API, database, frontend)
+   - Note any architectural constraints or patterns to follow
+
+2. **Assess Current State**
    - Review existing codebase structure
    - Understand current architecture and patterns
    - Identify how the new feature integrates with existing functionality
 
-2. **Create Implementation Plan**
+3. **Create Implementation Plan**
    - Files to be created or modified
    - Components, hooks, or utilities needed
    - Database changes (migrations required?)
+   - API changes (new routes, modified endpoints?)
    - Impact assessment on existing functionality (BE THOROUGH!)
    - Required changes to existing unit & E2E test scripts
    - New test scripts to be created
+   - **Architecture documentation updates needed**
 
-3. **Present Plan for Approval**
+4. **Present Plan for Approval**
    - Summarise the approach clearly
    - Highlight any risks or breaking changes
    - **DO NOT begin coding until the plan is explicitly approved**
@@ -316,10 +324,18 @@ Only after all regression tests pass:
 
 ### 3.7 Documentation Phase
 
-1. **README.md** - Update if feature adds user-facing functionality
-2. **CHANGELOG.md** - Add summary of changes under appropriate version
-3. **Code comments** - Add JSDoc for complex functions
-4. **Type definitions** - Ensure all new types are documented
+1. **ARCHITECTURE.md** - Update if feature changes:
+   - Database schema (new tables, columns, relationships)
+   - API routes (new endpoints or significant changes)
+   - Frontend pages or major components
+   - Services or data flow
+   - System diagrams (hardware, network, software)
+2. **README.md** - Update if feature adds user-facing functionality
+3. **CHANGELOG.md** - Add summary of changes under appropriate version
+4. **Code comments** - Add JSDoc for complex functions
+5. **Type definitions** - Ensure all new types are documented
+
+> **Architecture-First Principle:** Keep `ARCHITECTURE.md` as the single source of truth for system design. Any significant architectural change should be reflected there before or immediately after implementation.
 
 ### 3.8 Commit Phase
 
@@ -618,6 +634,7 @@ npm run deploy:prod      # Deploy to production (ask first!)
 - [ ] All tests pass
 
 ### Documentation
+- [ ] ARCHITECTURE.md updated (if schema/API/pages changed)
 - [ ] README updated (if needed)
 - [ ] CHANGELOG updated
 - [ ] Code comments added
