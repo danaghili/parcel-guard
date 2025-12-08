@@ -784,37 +784,45 @@ Trigger manual storage cleanup (deletes events older than retention period).
 
 ---
 
-### Frigate Webhook
+### Motion Webhook
 
-#### POST /api/frigate/events
+#### POST /api/motion/events
 
-Receive motion events from Frigate.
+Receive motion events from Motion daemon.
 
-**No Auth Required** (called internally by Frigate)
+**No Auth Required** (called internally by Motion)
 
-**Request Body:** Frigate event payload
+**Request Body:**
 ```json
 {
-  "type": "new",
-  "before": { ... },
-  "after": {
-    "id": "1701734400.123456-abc123",
-    "camera": "front_door",
-    "start_time": 1701734400.123456,
-    "end_time": null,
-    "has_clip": true,
-    "has_snapshot": true
+  "cameraId": "cam1",
+  "eventId": "12345",
+  "type": "start",
+  "timestamp": 1701734400
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `cameraId` | string | Yes | Camera identifier |
+| `eventId` | string | Yes | Unique event identifier from Motion |
+| `type` | string | Yes | Event type: `start` or `end` |
+| `timestamp` | number | Yes | Unix timestamp (seconds) |
+
+**Response:** `201 Created` for start events, `200 OK` for end events
+```json
+{
+  "success": true,
+  "data": {
+    "id": "motion-cam1-12345",
+    "cameraId": "cam1",
+    "timestamp": 1701734400,
+    "duration": null
   }
 }
 ```
 
-**Response:** `201 Created` for new events
-```json
-{
-  "success": true,
-  "data": { ... }
-}
-```
+On `end` event, the duration is calculated from the actual video file length.
 
 ---
 

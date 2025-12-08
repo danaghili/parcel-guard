@@ -867,44 +867,36 @@ paths:
                       bytesFreedFormatted:
                         type: string
 
-  /frigate/events:
+  /motion/events:
     post:
       tags: [Events]
-      summary: Frigate webhook endpoint
-      description: Receives motion events from Frigate. Called internally.
+      summary: Motion daemon webhook endpoint
+      description: Receives motion events from Motion daemon. Called internally.
       security: []
       requestBody:
         content:
           application/json:
             schema:
               type: object
+              required: [cameraId, eventId, type, timestamp]
               properties:
+                cameraId:
+                  type: string
+                  description: Camera identifier
+                eventId:
+                  type: string
+                  description: Unique event identifier from Motion
                 type:
                   type: string
-                  enum: [new, update, end]
-                before:
-                  type: object
-                after:
-                  type: object
-                  required: [id, camera]
-                  properties:
-                    id:
-                      type: string
-                    camera:
-                      type: string
-                    start_time:
-                      type: number
-                    end_time:
-                      type: number
-                      nullable: true
-                    has_clip:
-                      type: boolean
-                    has_snapshot:
-                      type: boolean
+                  enum: [start, end]
+                  description: Event type
+                timestamp:
+                  type: integer
+                  description: Unix timestamp (seconds)
       responses:
         '201':
-          description: Event created
+          description: Event created (on start)
         '200':
-          description: Event updated
+          description: Event updated (on end)
         '400':
           description: Invalid payload

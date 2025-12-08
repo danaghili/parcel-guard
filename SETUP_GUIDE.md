@@ -28,7 +28,7 @@ Before starting, verify you have all components.
 
 | Item | Qty | Notes |
 |------|-----|-------|
-| Raspberry Pi 4 (4GB RAM) | 1 | 4GB recommended for running Frigate |
+| Raspberry Pi 4 (4GB RAM) | 1 | 4GB recommended for running Motion and video processing |
 | Official Pi 4 USB-C Power Supply (5.1V 3A) | 1 | UK plug, must be 3A for reliable operation |
 | Argon ONE M.2 Case (or similar) | 1 | Provides cooling and SSD mounting |
 | MicroSD Card (32GB+) | 1 | For the operating system (use 64GB+ if not using SSD initially) |
@@ -366,7 +366,7 @@ npm run build -w apps/web
 
 ### Step 6.10: Continue with DEPLOYMENT_SPEC.md
 
-For the remaining hub configuration (systemd services, Nginx, Frigate, Cloudflare Tunnel), follow the detailed instructions in [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md) starting from section **"1.5 Configure Services"**.
+For the remaining hub configuration (systemd services, Nginx, Motion daemon, Tailscale), follow the detailed instructions in [DEPLOYMENT_SPEC.md](./DEPLOYMENT_SPEC.md) starting from section **"1.5 Configure Services"**.
 
 ---
 
@@ -828,8 +828,9 @@ If you've installed an SSD per [Section 11: Upgrades](#11-upgrades) and it's not
 | 22 | SSH |
 | 80 | Web interface (Nginx) |
 | 3000 | API server |
-| 5000 | Frigate |
+| 8080 | Motion daemon |
 | 8554 | Camera RTSP streams |
+| 8888 | MediaMTX HLS streams |
 
 ### Useful Commands
 
@@ -1000,7 +1001,7 @@ ssh dan@ParcelGuard.local
 
 # Stop ParcelGuard services
 sudo systemctl stop parcelguard-api
-sudo systemctl stop frigate
+sudo systemctl stop motion
 
 # Back up existing data (optional but recommended)
 tar -czvf ~/parcelguard-backup.tar.gz /mnt/storage/parcelguard/
@@ -1087,11 +1088,11 @@ ls -la /mnt/storage/parcelguard/
 ```bash
 # Start services
 sudo systemctl start parcelguard-api
-sudo systemctl start frigate
+sudo systemctl start motion
 
 # Verify everything is working
 sudo systemctl status parcelguard-api
-sudo systemctl status frigate
+sudo systemctl status motion
 ```
 
 #### Step 7: Clean Up (Optional)

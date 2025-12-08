@@ -8,7 +8,7 @@
 - **Frontend:** React (PWA) + TypeScript + Tailwind CSS
 - **Backend:** Node.js + Express/Fastify + TypeScript
 - **Database:** SQLite
-- **Video Processing:** Frigate/Motion
+- **Video Processing:** Motion daemon
 - **Testing:** Vitest (unit), Playwright (E2E)
 - **Build Tool:** Vite
 

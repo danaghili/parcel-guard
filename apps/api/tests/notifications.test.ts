@@ -17,6 +17,7 @@ import fs from 'fs'
 import path from 'path'
 
 const TEST_DB_PATH = './data/test-notifications.db'
+const TEST_USERNAME = 'testuser'
 const TEST_PIN = '1234'
 
 describe('Notification Service', () => {
@@ -41,7 +42,9 @@ describe('Notification Service', () => {
     // Seed test data
     const hashedPin = await hashPin(TEST_PIN)
     const db = getDb()
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('pin', hashedPin)
+    db.prepare(
+      'INSERT INTO users (id, username, pinHash, displayName, isAdmin, enabled) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run('test-user-1', TEST_USERNAME, hashedPin, 'Test User', 1, 1)
     db.exec(`
       INSERT INTO cameras (id, name, streamUrl, status, notificationsEnabled)
       VALUES ('cam1', 'Test Camera', 'rtsp://test:8554/stream', 'online', 1);
@@ -53,7 +56,7 @@ describe('Notification Service', () => {
     const loginResponse = await server.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { pin: TEST_PIN },
+      payload: { username: TEST_USERNAME, pin: TEST_PIN },
     })
     authToken = JSON.parse(loginResponse.body).data.token
   })

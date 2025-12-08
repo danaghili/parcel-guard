@@ -10,7 +10,7 @@ import { test, expect, type Page, type APIRequestContext } from '@playwright/tes
  * - Marking events as important/false alarm
  * - Deleting events
  * - Camera settings API
- * - Frigate webhook integration
+ * - Motion daemon webhook integration
  */
 
 const API_BASE_URL = 'http://localhost:3000'
@@ -220,34 +220,16 @@ test.describe('Camera Settings API', () => {
   })
 })
 
-test.describe('Frigate Webhook API', () => {
-  test('should accept valid Frigate event payload', async ({ request }) => {
-    // Frigate webhooks don't require auth
-    const webhookResponse = await request.post(`${API_BASE_URL}/api/frigate/events`, {
+test.describe('Motion Webhook API', () => {
+  test('should accept valid Motion event payload', async ({ request }) => {
+    // Motion webhooks don't require auth
+    const timestamp = Math.floor(Date.now() / 1000)
+    const webhookResponse = await request.post(`${API_BASE_URL}/api/motion/events`, {
       data: {
-        type: 'new',
-        before: {
-          id: `e2e-test-${Date.now()}`,
-          camera: 'cam1',
-          start_time: Date.now() / 1000,
-          end_time: null,
-          label: 'person',
-          top_score: 0.9,
-          has_clip: true,
-          has_snapshot: true,
-          current_zones: [],
-        },
-        after: {
-          id: `e2e-test-${Date.now()}`,
-          camera: 'cam1',
-          start_time: Date.now() / 1000,
-          end_time: null,
-          label: 'person',
-          top_score: 0.9,
-          has_clip: true,
-          has_snapshot: true,
-          current_zones: [],
-        },
+        cameraId: 'cam1',
+        eventId: `e2e-test-${Date.now()}`,
+        type: 'start',
+        timestamp,
       },
     })
 
@@ -255,8 +237,8 @@ test.describe('Frigate Webhook API', () => {
     expect([201, 400]).toContain(webhookResponse.status())
   })
 
-  test('should reject invalid Frigate payload', async ({ request }) => {
-    const webhookResponse = await request.post(`${API_BASE_URL}/api/frigate/events`, {
+  test('should reject invalid Motion payload', async ({ request }) => {
+    const webhookResponse = await request.post(`${API_BASE_URL}/api/motion/events`, {
       data: { invalid: 'payload' },
     })
 
@@ -264,7 +246,7 @@ test.describe('Frigate Webhook API', () => {
   })
 
   test('should reject empty payload', async ({ request }) => {
-    const webhookResponse = await request.post(`${API_BASE_URL}/api/frigate/events`, {
+    const webhookResponse = await request.post(`${API_BASE_URL}/api/motion/events`, {
       data: {},
     })
 

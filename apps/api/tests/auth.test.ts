@@ -8,6 +8,7 @@ import fs from 'fs'
 import path from 'path'
 
 const TEST_DB_PATH = './data/test-auth.db'
+const TEST_USERNAME = 'testuser'
 const TEST_PIN = '1234'
 
 describe('Auth API', () => {
@@ -28,10 +29,12 @@ describe('Auth API', () => {
     initDb(TEST_DB_PATH)
     runMigrations()
 
-    // Seed test PIN
+    // Seed test user
     const hashedPin = await hashPin(TEST_PIN)
     const db = getDb()
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('pin', hashedPin)
+    db.prepare(
+      'INSERT INTO users (id, username, pinHash, displayName, isAdmin, enabled) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run('test-user-1', TEST_USERNAME, hashedPin, 'Test User', 1, 1)
 
     // Build server
     server = await buildServer({ logger: false, skipDbInit: true })
@@ -52,11 +55,11 @@ describe('Auth API', () => {
   })
 
   describe('POST /api/auth/login', () => {
-    it('should return token for valid PIN', async () => {
+    it('should return token for valid username and PIN', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { pin: TEST_PIN },
+        payload: { username: TEST_USERNAME, pin: TEST_PIN },
       })
 
       expect(response.statusCode).toBe(200)
@@ -66,13 +69,15 @@ describe('Auth API', () => {
       expect(body.data.token).toBeDefined()
       expect(typeof body.data.token).toBe('string')
       expect(body.data.expiresAt).toBeDefined()
+      expect(body.data.user).toBeDefined()
+      expect(body.data.user.username).toBe(TEST_USERNAME)
     })
 
     it('should reject invalid PIN', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { pin: '0000' },
+        payload: { username: TEST_USERNAME, pin: '0000' },
       })
 
       expect(response.statusCode).toBe(401)
@@ -81,11 +86,34 @@ describe('Auth API', () => {
       expect(body.error).toBe('INVALID_CREDENTIALS')
     })
 
+    it('should reject invalid username', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { username: 'nonexistent', pin: TEST_PIN },
+      })
+
+      expect(response.statusCode).toBe(401)
+
+      const body = JSON.parse(response.body)
+      expect(body.error).toBe('INVALID_CREDENTIALS')
+    })
+
+    it('should reject missing username', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { pin: TEST_PIN },
+      })
+
+      expect(response.statusCode).toBe(400)
+    })
+
     it('should reject missing PIN', async () => {
       const response = await server.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: {},
+        payload: { username: TEST_USERNAME },
       })
 
       expect(response.statusCode).toBe(400)
@@ -98,7 +126,7 @@ describe('Auth API', () => {
       const loginResponse = await server.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { pin: TEST_PIN },
+        payload: { username: TEST_USERNAME, pin: TEST_PIN },
       })
       const { token } = JSON.parse(loginResponse.body).data
 
@@ -146,7 +174,7 @@ describe('Auth API', () => {
       const loginResponse = await server.inject({
         method: 'POST',
         url: '/api/auth/login',
-        payload: { pin: TEST_PIN },
+        payload: { username: TEST_USERNAME, pin: TEST_PIN },
       })
       const { token } = JSON.parse(loginResponse.body).data
 

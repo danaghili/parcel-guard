@@ -324,7 +324,7 @@ parcelguard/
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/api/frigate/events` | No* | Receive motion events |
+| POST | `/api/motion/events` | No* | Receive motion events |
 
 *Internal only (from Motion daemon)
 
@@ -379,7 +379,7 @@ Camera RTSP Stream
         │              └─────┬─────┘
         │                    │
         ▼                    ▼
-  motion-event.sh ─────► POST /api/frigate/events
+  motion-event.sh ─────► POST /api/motion/events
                               │
                               ▼
                     Create motion_events record

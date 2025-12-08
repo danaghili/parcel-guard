@@ -8,6 +8,7 @@ import fs from 'fs'
 import path from 'path'
 
 const TEST_DB_PATH = './data/test-events.db'
+const TEST_USERNAME = 'testuser'
 const TEST_PIN = '1234'
 
 describe('Events API', () => {
@@ -32,7 +33,9 @@ describe('Events API', () => {
     // Seed test data
     const hashedPin = await hashPin(TEST_PIN)
     const db = getDb()
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('pin', hashedPin)
+    db.prepare(
+      'INSERT INTO users (id, username, pinHash, displayName, isAdmin, enabled) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run('test-user-1', TEST_USERNAME, hashedPin, 'Test User', 1, 1)
     db.exec(`
       INSERT INTO cameras (id, name, streamUrl, status) VALUES ('cam1', 'Test Camera 1', 'rtsp://test:8554/stream1', 'online');
       INSERT INTO cameras (id, name, streamUrl, status) VALUES ('cam2', 'Test Camera 2', 'rtsp://test:8554/stream2', 'offline');
@@ -44,7 +47,7 @@ describe('Events API', () => {
     const loginResponse = await server.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { pin: TEST_PIN },
+      payload: { username: TEST_USERNAME, pin: TEST_PIN },
     })
     authToken = JSON.parse(loginResponse.body).data.token
   })
@@ -60,68 +63,52 @@ describe('Events API', () => {
     db.exec('DELETE FROM motion_events')
   })
 
-  describe('POST /api/frigate/events', () => {
-    it('should create new event on frigate webhook', async () => {
+  describe('POST /api/motion/events', () => {
+    it('should create new event on motion webhook', async () => {
+      const timestamp = Math.floor(Date.now() / 1000)
       const response = await server.inject({
         method: 'POST',
-        url: '/api/frigate/events',
+        url: '/api/motion/events',
         payload: {
-          type: 'new',
-          before: {
-            id: 'test-event-1',
-            camera: 'cam1',
-            start_time: Date.now() / 1000,
-            end_time: null,
-            label: 'person',
-            top_score: 0.85,
-            has_clip: true,
-            has_snapshot: true,
-            current_zones: [],
-          },
-          after: {
-            id: 'test-event-1',
-            camera: 'cam1',
-            start_time: Date.now() / 1000,
-            end_time: null,
-            label: 'person',
-            top_score: 0.85,
-            has_clip: true,
-            has_snapshot: true,
-            current_zones: [],
-          },
+          cameraId: 'cam1',
+          eventId: 'test-event-1',
+          type: 'start',
+          timestamp,
         },
       })
 
       expect(response.statusCode).toBe(201)
       const body = JSON.parse(response.body)
       expect(body.success).toBe(true)
-      expect(body.data.id).toBe('test-event-1')
+      expect(body.data.id).toBe('motion-cam1-test-event-1')
       expect(body.data.cameraId).toBe('cam1')
     })
 
-    it('should update event on frigate end webhook', async () => {
-      const startTime = Date.now() / 1000
+    it('should update event on motion end webhook', async () => {
+      const startTime = Math.floor(Date.now() / 1000)
       const endTime = startTime + 30
 
       // Create event first
       await server.inject({
         method: 'POST',
-        url: '/api/frigate/events',
+        url: '/api/motion/events',
         payload: {
-          type: 'new',
-          before: { id: 'test-event-2', camera: 'cam1', start_time: startTime, end_time: null, label: 'person', top_score: 0.85, has_clip: false, has_snapshot: false, current_zones: [] },
-          after: { id: 'test-event-2', camera: 'cam1', start_time: startTime, end_time: null, label: 'person', top_score: 0.85, has_clip: false, has_snapshot: false, current_zones: [] },
+          cameraId: 'cam1',
+          eventId: 'test-event-2',
+          type: 'start',
+          timestamp: startTime,
         },
       })
 
       // End event
       const response = await server.inject({
         method: 'POST',
-        url: '/api/frigate/events',
+        url: '/api/motion/events',
         payload: {
+          cameraId: 'cam1',
+          eventId: 'test-event-2',
           type: 'end',
-          before: { id: 'test-event-2', camera: 'cam1', start_time: startTime, end_time: null, label: 'person', top_score: 0.85, has_clip: false, has_snapshot: false, current_zones: [] },
-          after: { id: 'test-event-2', camera: 'cam1', start_time: startTime, end_time: endTime, label: 'person', top_score: 0.85, has_clip: true, has_snapshot: true, current_zones: [] },
+          timestamp: endTime,
         },
       })
 
@@ -133,7 +120,7 @@ describe('Events API', () => {
     it('should reject invalid payload', async () => {
       const response = await server.inject({
         method: 'POST',
-        url: '/api/frigate/events',
+        url: '/api/motion/events',
         payload: { invalid: 'payload' },
       })
 
@@ -365,7 +352,9 @@ describe('Cameras API - Settings', () => {
     // Seed test data with properly hashed PIN
     const hashedPin = await hashPin(TEST_PIN)
     const db = getDb()
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('pin', hashedPin)
+    db.prepare(
+      'INSERT INTO users (id, username, pinHash, displayName, isAdmin, enabled) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run('test-user-2', TEST_USERNAME, hashedPin, 'Test User', 1, 1)
     db.exec(`
       INSERT INTO cameras (id, name, streamUrl, status, motionSensitivity, notificationsEnabled)
       VALUES ('cam1', 'Test Camera', 'rtsp://test:8554/stream', 'online', 50, 1);
@@ -376,7 +365,7 @@ describe('Cameras API - Settings', () => {
     const loginResponse = await server.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { pin: TEST_PIN },
+      payload: { username: TEST_USERNAME, pin: TEST_PIN },
     })
     authToken = JSON.parse(loginResponse.body).data.token
   })

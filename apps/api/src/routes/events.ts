@@ -17,10 +17,36 @@ import { createReadStream, existsSync } from 'fs'
 import { stat } from 'fs/promises'
 import path from 'path'
 import { optimizeImage, getBestFormat } from '../services/images'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execAsync = promisify(exec)
 
 // Base paths for media files
 const CLIPS_PATH = process.env.CLIPS_PATH ?? './data/clips'
 const THUMBNAILS_PATH = process.env.THUMBNAILS_PATH ?? './data/thumbnails'
+
+/**
+ * Get the duration of a video file using ffprobe
+ * Returns duration in seconds, or null if unable to determine
+ */
+async function getVideoDuration(videoPath: string): Promise<number | null> {
+  const fullPath = path.join(CLIPS_PATH, videoPath)
+
+  if (!existsSync(fullPath)) {
+    return null
+  }
+
+  try {
+    const { stdout } = await execAsync(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${fullPath}"`
+    )
+    const duration = parseFloat(stdout.trim())
+    return isNaN(duration) ? null : Math.round(duration)
+  } catch {
+    return null
+  }
+}
 
 interface EventParams {
   id: string
@@ -129,13 +155,33 @@ export const eventsRoutes: FastifyPluginAsync = async (
             data: event,
           })
         } else if (type === 'end') {
-          // Update existing event with duration
-          // Note: videoPath is already set correctly on event start, no need to update it
+          // Update existing event with duration from actual video file
           const id = `motion-${cameraId}-${eventId}`
           const existing = getEventById(id)
 
           if (existing) {
-            const duration = timestamp - existing.timestamp
+            // Try to get actual video duration from file
+            // Fall back to timestamp-based calculation if file not available yet
+            let duration: number | null = null
+
+            if (existing.videoPath) {
+              duration = await getVideoDuration(existing.videoPath)
+              if (duration) {
+                server.log.debug(
+                  { eventId: id, duration, videoPath: existing.videoPath },
+                  'Got duration from video file'
+                )
+              }
+            }
+
+            // Fall back to timestamp calculation if video not available
+            if (duration === null) {
+              duration = timestamp - existing.timestamp
+              server.log.debug(
+                { eventId: id, duration },
+                'Using timestamp-based duration (video not available)'
+              )
+            }
 
             const event = updateEvent(id, {
               duration,
