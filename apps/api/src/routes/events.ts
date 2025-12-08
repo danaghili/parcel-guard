@@ -13,9 +13,10 @@ import { getCameraById } from '../services/cameras'
 import { sendMotionAlert } from '../services/notifications'
 import { ApiError } from '../lib/errors'
 import type { EventFilters } from '@parcelguard/shared'
-import { createReadStream, existsSync, readdirSync } from 'fs'
+import { createReadStream, existsSync, readdirSync, mkdirSync, createWriteStream } from 'fs'
 import { stat } from 'fs/promises'
 import path from 'path'
+import { pipeline } from 'stream/promises'
 import { optimizeImage, getBestFormat } from '../services/images'
 import { exec } from 'child_process'
 import { promisify } from 'util'
@@ -271,6 +272,103 @@ export const eventsRoutes: FastifyPluginAsync = async (
       }
     },
   )
+
+  /**
+   * Upload clip from camera
+   * Called by camera after recording motion event locally
+   */
+  server.post('/clips/upload', async (request, reply) => {
+    try {
+      const data = await request.file()
+
+      if (!data) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'No file uploaded',
+        })
+      }
+
+      // Get form fields
+      const fields = data.fields as Record<string, { value: string } | undefined>
+      const cameraId = fields.cameraId?.value
+      const eventId = fields.eventId?.value
+      const timestamp = fields.timestamp?.value
+
+      if (!cameraId || !eventId || !timestamp) {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'Missing required fields: cameraId, eventId, timestamp',
+        })
+      }
+
+      // Ensure camera directory exists
+      const cameraDir = path.join(CLIPS_PATH, cameraId)
+      if (!existsSync(cameraDir)) {
+        mkdirSync(cameraDir, { recursive: true })
+      }
+
+      // Generate filename from timestamp
+      const eventDate = new Date(parseInt(timestamp) * 1000)
+      const dateStr = eventDate.toISOString().slice(0, 10).replace(/-/g, '')
+      const timeStr = eventDate.toISOString().slice(11, 19).replace(/:/g, '')
+      const filename = `${dateStr}_${timeStr}.mp4`
+      const filePath = path.join(cameraDir, filename)
+
+      // Save the file
+      const writeStream = createWriteStream(filePath)
+      await pipeline(data.file, writeStream)
+
+      const stats = await stat(filePath)
+      server.log.info(
+        { cameraId, eventId, filename, size: stats.size },
+        'Clip uploaded successfully'
+      )
+
+      // Update event with video path if it exists
+      const fullEventId = `motion-${cameraId}-${eventId}`
+      const event = getEventById(fullEventId)
+      if (event) {
+        // Get actual duration from video
+        const duration = await getVideoDuration(`${cameraId}/${filename}`)
+        updateEvent(fullEventId, {
+          videoPath: `${cameraId}/${filename}`,
+          duration: duration ?? undefined,
+        })
+      }
+
+      // Generate thumbnail from video
+      const thumbnailPath = path.join(THUMBNAILS_PATH, `${cameraId}_${dateStr}_${timeStr}.jpg`)
+      try {
+        await execAsync(
+          `ffmpeg -i "${filePath}" -ss 00:00:01 -vframes 1 -y "${thumbnailPath}" 2>/dev/null`
+        )
+        server.log.debug({ thumbnailPath }, 'Thumbnail generated')
+
+        // Update event with thumbnail path
+        if (event) {
+          updateEvent(fullEventId, {
+            thumbnailPath: `${cameraId}_${dateStr}_${timeStr}.jpg`,
+          })
+        }
+      } catch (err) {
+        server.log.warn({ err }, 'Failed to generate thumbnail')
+      }
+
+      return reply.send({
+        success: true,
+        data: {
+          filename,
+          size: stats.size,
+        },
+      })
+    } catch (error) {
+      server.log.error({ error }, 'Clip upload failed')
+      return reply.status(500).send({
+        error: 'INTERNAL_ERROR',
+        message: 'Failed to upload clip',
+      })
+    }
+  })
 
   /**
    * List events with filtering and pagination

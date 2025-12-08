@@ -3,6 +3,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
+import multipart from '@fastify/multipart'
 import { initDb } from './db'
 import { runMigrations } from './db/migrate'
 import { authRoutes } from './routes/auth'
@@ -57,6 +58,13 @@ async function buildServer(
   // Rate limiting for brute force protection
   await server.register(rateLimit, {
     global: false, // Only apply to specific routes
+  })
+
+  // Multipart for file uploads (clip uploads from cameras)
+  await server.register(multipart, {
+    limits: {
+      fileSize: 500 * 1024 * 1024, // 500MB max
+    },
   })
 
   // Register routes
