@@ -37,7 +37,7 @@ describe('SystemStats', () => {
   it('should render memory percentage', () => {
     render(<SystemStats {...defaultProps} />)
     expect(screen.getByText('50%')).toBeInTheDocument()
-    expect(screen.getByText('Memory')).toBeInTheDocument()
+    expect(screen.getByText('Hub Memory (RAM)')).toBeInTheDocument()
   })
 
   it('should render memory usage', () => {
@@ -138,14 +138,16 @@ describe('CameraHealthTable', () => {
     expect(screen.getByText('Offline')).toBeInTheDocument()
   })
 
-  it('should show last seen time', () => {
+  it('should show last seen time only for offline cameras', () => {
     render(
       <BrowserRouter>
         <CameraHealthTable cameras={mockCameras} />
       </BrowserRouter>
     )
-    expect(screen.getByText('Just now')).toBeInTheDocument() // Within 1 minute
-    expect(screen.getByText('1h ago')).toBeInTheDocument()
+    // Online camera (cam1) should NOT show last seen
+    expect(screen.queryByText('Just now')).not.toBeInTheDocument()
+    // Offline camera (cam2) should show last seen
+    expect(screen.getByText(/Last seen 1h ago/)).toBeInTheDocument()
   })
 
   it('should show camera count summary', () => {
