@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Shield shape - blue -->
+  <path d="M256 16C160 16 64 64 64 64v192c0 128 96 208 192 240 96-32 192-112 192-240V64S352 16 256 16z" fill="#2563eb"/>
+  <!-- Parcel box icon -->
+  <g fill="#ffffff">
+    <!-- Box base -->
+    <path d="M176 200h160v120c0 8-6 14-14 14H190c-8 0-14-6-14-14V200z"/>
+    <!-- Box lid -->
+    <path d="M168 180l88-44 88 44v24H168v-24z"/>
+    <!-- Box tape/stripe -->
+    <rect x="244" y="136" width="24" height="178" rx="4"/>
+  </g>
+</svg>
