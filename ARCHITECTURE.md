@@ -4,8 +4,8 @@
 
 ParcelGuard is a DIY multi-camera security system for monitoring communal areas in residential buildings, focused on detecting and recording parcel theft. The system consists of battery-powered camera units, a central processing hub, and a mobile-accessible web application.
 
-**Version:** 0.9.0
-**Last Updated:** December 2024
+**Version:** 0.10.0
+**Last Updated:** December 9, 2024
 
 ---
 
@@ -32,45 +32,52 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
     │                         PI 4 HUB (100.72.88.127)                     │
     │                                                                      │
     │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────────┐   │
-    │  │   Nginx    │  │  Fastify   │  │   Motion   │  │   MediaMTX    │   │
-    │  │   :80      │◄─┤  API :3000 │◄─┤   Daemon   │  │   (HLS :8888) │   │
+    │  │   Nginx    │  │  Fastify   │  │   MQTT     │  │   MediaMTX    │   │
+    │  │   :80      │◄─┤  API :3000 │◄─┤  Mosquitto │  │   (HLS :8888) │   │
     │  └─────┬──────┘  └─────┬──────┘  └──────┬─────┘  └───────▲───────┘   │
     │        │               │                │                │           │
     │        │ /streams/* ───────────────────────────────────►─┘           │
-    │        │ (proxy)                                                     │
+    │        │ (proxy)       │                │                            │
     │        │         ┌─────▼──────┐         │                            │
-    │        │         │   SQLite   │         │                            │
-    │        │         │  Database  │         │                            │
+    │        │         │   SQLite   │         │ MQTT pub/sub               │
+    │        │         │  Database  │         │ (events, status)           │
     │        │         └────────────┘         │                            │
     │        │                                │                            │
     │        │         ┌──────────────────────▼────────────────┐           │
-    │        │         │         /mnt/storage                  │           │
+    │        │         │       240GB SSD (/mnt/ssd)            │           │
     │  ┌─────▼──────┐  │  ┌──────────┐ ┌─────────┐ ┌─────────┐ │           │
     │  │  React PWA │  │  │  clips/  │ │ thumbs/ │ │  data/  │ │           │
     │  │  (static)  │  │  │  (video) │ │ (jpeg)  │ │ (db)    │ │           │
     │  └────────────┘  │  └──────────┘ └─────────┘ └─────────┘ │           │
     │                  └───────────────────────────────────────┘           │
     │                                                                      │
-    │   MediaMTX pulls RTSP streams from cameras, converts to HLS          │
+    │   MediaMTX receives RTSP from cameras on-demand, converts to HLS     │
     │   Nginx proxies /streams/* to MediaMTX for Funnel access             │
     └──────────────────────────────────────────────────────────────────────┘
                    ▲                                     ▲
-                   │ RTSP :8554                          │ RTSP :8554
+                   │ RTSP :8554 (on-demand)              │ RTSP :8554
+                   │ MQTT (status/events)                │ MQTT
                    │ (via Tailscale)                     │ (via Tailscale)
     ┌──────────────┴───────────────┐    ┌───────────────┴──────────────────┐
     │  PI ZERO 2W - CAM1           │    │  PI ZERO 2W - CAM2               │
     │  (100.120.125.42)            │    │  (100.69.12.33)                  │
     │                              │    │                                  │
-    │  ┌──────────┐ ┌──────────┐   │    │  ┌──────────┐ ┌──────────┐       │
-    │  │ Camera   │ │ MediaMTX │   │    │  │ Camera   │ │ MediaMTX │       │
-    │  │ Module 3 │►│ RTSP     │   │    │  │ Module 3 │►│ RTSP     │       │
-    │  └──────────┘ └──────────┘   │    │  └──────────┘ └──────────┘       │
+    │  ┌─────────────────────────┐ │    │  ┌─────────────────────────┐     │
+    │  │   Motion Detection      │ │    │  │   Motion Detection      │     │
+    │  │   (on-device Python)    │ │    │  │   (on-device Python)    │     │
+    │  │                         │ │    │  │                         │     │
+    │  │  Camera Module 3        │ │    │  │  Camera Module 3        │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  Picamera2 + OpenCV     │ │    │  │  Picamera2 + OpenCV     │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  Motion → Record clip   │ │    │  │  Motion → Record clip   │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  SCP to hub + MQTT      │ │    │  │  SCP to hub + MQTT      │     │
+    │  └─────────────────────────┘ │    │  └─────────────────────────┘     │
     │                              │    │                                  │
-    │  ┌──────────────────────┐    │    │  ┌──────────────────────┐        │
-    │  │ Health Check Service │    │    │  │ Health Check Service │        │
-    │  │ → POST /api/cameras/ │    │    │  │ → POST /api/cameras/ │        │
-    │  │   cam1/health (30s)  │    │    │  │   cam2/health (30s)  │        │
-    │  └──────────────────────┘    │    │  └──────────────────────┘        │
+    │  States: IDLE → MOTION →     │    │  States: IDLE → MOTION →         │
+    │          UPLOADING → IDLE    │    │          UPLOADING → IDLE        │
+    │          LIVE_VIEW (on-demand)    │          LIVE_VIEW (on-demand)   │
     │                              │    │                                  │
     │  Power: 20,000mAh USB Bank   │    │  Power: 20,000mAh USB Bank       │
     └──────────────────────────────┘    └──────────────────────────────────┘
@@ -84,8 +91,8 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
 
 | Component | Specification | Purpose |
 |-----------|---------------|---------|
-| Raspberry Pi 4 | 4GB RAM | Central processing, API server, motion detection |
-| Storage | microSD 32GB + USB SSD | OS boot + video/data storage |
+| Raspberry Pi 4 | 4GB RAM | Central processing, API server, media server |
+| Storage | microSD 32GB + 240GB SSD | OS boot + video/data storage (SSD) |
 | Case | Argon ONE M.2 | Cooling + SSD mounting |
 | Power | Official Pi 4 USB-C 5.1V 3A | Continuous power |
 | Network | WiFi (home network) + Tailscale VPN | Local + remote access |
@@ -119,8 +126,9 @@ ParcelGuard is a DIY multi-camera security system for monitoring communal areas 
 | Frontend | React 18 + TypeScript + Tailwind CSS | PWA mobile app |
 | Backend | Node.js + Fastify + TypeScript | REST API server |
 | Database | SQLite (better-sqlite3) | Data persistence |
-| Streaming | MediaMTX | RTSP to HLS conversion |
-| Motion | Motion daemon | Motion detection + recording |
+| Streaming | MediaMTX | RTSP to HLS conversion (hub) |
+| Motion | On-device Python | Motion detection + recording (cameras) |
+| MQTT | Mosquitto | Camera status and event messaging |
 | Notifications | ntfy.sh | Push notifications |
 | Remote Access | Tailscale + Funnel | VPN + public HTTPS |
 
@@ -350,42 +358,68 @@ parcelguard/
 
 ## Data Flow
 
-### Live Streaming
+### Live Streaming (On-Demand)
 
 ```
-Camera Module → rpicam-vid → MediaMTX (RTSP :8554)
-                                 │
-                                 │ Tailscale VPN
-                                 ▼
-                    Hub MediaMTX (HLS :8888)
-                                 │
-                                 ▼
-                    Nginx → React PWA → HLS.js Player
-```
-
-### Motion Detection & Recording
-
-```
-Camera RTSP Stream
+User opens Live View
         │
         ▼
-   Motion Daemon ─────► Detect Motion
-        │                    │
-        │              ┌─────┴─────┐
-        │              ▼           ▼
-        │         Save Video   Save Thumbnail
-        │         (/clips/)    (/thumbnails/)
-        │              │           │
-        │              └─────┬─────┘
-        │                    │
-        ▼                    ▼
-  motion-event.sh ─────► POST /api/motion/events
-                              │
-                              ▼
-                    Create motion_events record
-                              │
-                              ▼
-                    Send ntfy.sh notification
+API sends MQTT command: start_live_view
+        │
+        ▼
+Camera receives command
+        │
+        ▼
+Camera starts ffmpeg → RTSP to Hub MediaMTX
+        │
+        ▼
+Hub MediaMTX (HLS :8888)
+        │
+        ▼
+Nginx proxies /streams/{camId}/*
+        │
+        ▼
+React PWA → HLS.js Player
+
+(Stream stops after 2-minute idle timeout)
+```
+
+### Motion Detection & Recording (On-Device)
+
+```
+Camera Module 3
+        │
+        ▼
+   Picamera2 (Python) ─────► Continuous capture
+        │
+        ▼
+   OpenCV frame diff ─────► Detect Motion
+        │
+        ├─► No motion: Continue monitoring
+        │
+        └─► Motion detected:
+                │
+                ├─► H264 encoder records clip
+                │   (30-second chunks)
+                │
+                └─► On motion end:
+                        │
+                        ├─► Generate thumbnail (ffmpeg)
+                        │
+                        ├─► SCP clip + thumbnail to hub
+                        │   /mnt/ssd/parcelguard/clips/{camId}/
+                        │   /mnt/ssd/parcelguard/thumbnails/
+                        │
+                        └─► MQTT publish: motion_end event
+                                │
+                                ▼
+                        API receives event
+                                │
+                                ▼
+                        Create motion_events record
+                                │
+                                ▼
+                        Send ntfy.sh notification
 ```
 
 ### Authentication Flow
@@ -573,29 +607,29 @@ When changing a field, check all its consumers:
 ### File System Dependencies
 
 ```
-/mnt/storage/parcelguard/
+/mnt/ssd/parcelguard/
 ├── data/parcelguard.db
 │   └── Referenced by: DATABASE_PATH env var → API startup
 │
 ├── clips/{cameraId}/{timestamp}.mp4
-│   ├── Written by: Motion daemon (movie_filename config)
+│   ├── Written by: On-device motion detection (SCP from camera)
 │   ├── Referenced by: motion_events.videoPath
 │   └── Served by: GET /api/events/:id/video
 │
 └── thumbnails/{cameraId}_{timestamp}.jpg
-    ├── Written by: Motion daemon (picture_filename config)
+    ├── Written by: On-device motion detection (SCP from camera)
     ├── Referenced by: motion_events.thumbnailPath
     └── Served by: GET /api/events/:id/thumbnail
 ```
 
 ### Configuration File Dependencies
 
-| Config File | Depends On | Affects |
-|-------------|------------|---------|
-| `/etc/motion/camera1.conf` | camera.streamUrl (manual sync) | Motion detection for cam1 |
-| `/etc/motion/camera2.conf` | camera.streamUrl (manual sync) | Motion detection for cam2 |
-| `/etc/nginx/sites-available/parcelguard` | apps/web/dist path | Static file serving |
-| `/etc/systemd/system/parcelguard-api.service` | DATABASE_PATH, PORT | API startup |
+| Config File | Location | Affects |
+|-------------|----------|---------|
+| `mediamtx.yml` | Hub: `/home/dan/mediamtx.yml` | HLS stream conversion |
+| `motion-detect.service` | Cameras: `/etc/systemd/system/` | On-device motion detection |
+| `parcelguard-api.service` | Hub: `/etc/systemd/system/` | API server startup |
+| `nginx parcelguard` | Hub: `/etc/nginx/sites-available/` | Static file + API proxy |
 
 ### Change Impact Checklist
 
@@ -616,36 +650,63 @@ Before modifying any of the following, check downstream consumers:
 |---------|------|------|-------------|
 | parcelguard-api | systemd | 3000 | Fastify API server |
 | nginx | systemd | 80 | Reverse proxy + static files |
-| motion | systemd | 8080 | Motion detection daemon |
+| mediamtx | systemd | 8888 (HLS), 8554 (RTSP) | Media streaming server |
+| mosquitto | systemd | 1883 | MQTT broker |
 | tailscaled | systemd | - | Tailscale VPN daemon |
+
+## Services (Cameras)
+
+| Service | Type | Description |
+|---------|------|-------------|
+| motion-detect | systemd | On-device motion detection + recording |
+| tailscaled | systemd | Tailscale VPN daemon |
 
 ### Systemd Services
 
 ```bash
-# Check all services
-sudo systemctl status parcelguard-api nginx motion tailscaled
+# Check hub services
+sudo systemctl status parcelguard-api nginx mediamtx mosquitto tailscaled
 
 # View logs
 journalctl -u parcelguard-api -f
-journalctl -u motion -f
+journalctl -u mediamtx -f
+
+# Check camera services (SSH to camera first)
+sudo systemctl status motion-detect
+journalctl -u motion-detect -f
 ```
 
 ---
 
 ## Storage Layout
 
+### Hub (240GB SSD mounted at /mnt/ssd)
+
 ```
-/mnt/storage/parcelguard/
+/mnt/ssd/parcelguard/
 ├── data/
-│   └── parcelguard.db          # SQLite database
+│   └── parcelguard.db          # SQLite database (~4MB)
 ├── clips/
 │   ├── cam1/
-│   │   └── 20241207_143022.mp4 # Motion clips
+│   │   └── 20241207_143022.mp4 # Motion clips (~2-20MB each)
 │   └── cam2/
 │       └── 20241207_152145.mp4
 └── thumbnails/
-    ├── cam1_20241207_143022.jpg
+    ├── cam1_20241207_143022.jpg # Event thumbnails (~50KB each)
     └── cam2_20241207_152145.jpg
+```
+
+### Application Code (MicroSD)
+
+```
+/home/dan/
+├── parcelguard-api/            # API server code
+│   ├── dist/                   # Compiled TypeScript
+│   └── node_modules/
+├── parcelguard-web/            # Static web files
+│   ├── assets/
+│   └── index.html
+└── mediamtx.yml                # MediaMTX configuration
 ```
 
 ### Retention Policy

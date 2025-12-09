@@ -49,7 +49,7 @@ describe('Health API', () => {
 
     const body = JSON.parse(response.body)
     expect(body.status).toBe('ok')
-    expect(body.version).toBe('0.1.0')
+    expect(body.version).toBe('0.10.0')
     expect(typeof body.timestamp).toBe('number')
   })
 })

@@ -362,6 +362,21 @@ export const camerasApi = {
     )
     return response.data
   },
+
+  startLiveView: async (id: string): Promise<void> => {
+    await api.post(`/api/cameras/${id}/live/start`, {})
+  },
+
+  stopLiveView: async (id: string): Promise<void> => {
+    await api.post(`/api/cameras/${id}/live/stop`, {})
+  },
+
+  getStreamStatus: async (id: string): Promise<boolean> => {
+    const response = await api.get<{ success: true; data: { ready: boolean } }>(
+      `/api/cameras/${id}/stream-status`,
+    )
+    return response.data.ready
+  },
 }
 
 // System API

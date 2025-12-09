@@ -106,6 +106,11 @@ export default defineConfig({
             urlPattern: /\/api\/auth\//,
             handler: 'NetworkOnly',
           },
+          {
+            // Network-only for HLS streams (never cache, never intercept)
+            urlPattern: /\/streams\//,
+            handler: 'NetworkOnly',
+          },
         ],
       },
     }),
@@ -123,8 +128,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://100.72.88.127:3000',
         changeOrigin: true,
+      },
+      '/streams': {
+        target: 'http://100.72.88.127:8888',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/streams/, ''),
       },
     },
   },

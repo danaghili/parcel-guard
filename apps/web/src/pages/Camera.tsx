@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CameraPlayer } from '@/components/cameras/CameraPlayer'
 import { Spinner } from '@/components/ui/Spinner'
@@ -17,14 +17,53 @@ export function Camera(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [streamStatus, setStreamStatus] = useState<StreamStatus>('idle')
 
+  // Wait for stream to be ready
+  const waitForStreamReady = useCallback(async (id: string, maxWaitMs = 10000): Promise<boolean> => {
+    const startTime = Date.now()
+    const pollInterval = 500
+
+    while (Date.now() - startTime < maxWaitMs) {
+      try {
+        const ready = await camerasApi.getStreamStatus(id)
+        if (ready) return true
+      } catch {
+        // Ignore errors, keep polling
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval))
+    }
+    return false
+  }, [])
+
+  // Start live view for this camera
+  const startLiveView = useCallback(async (id: string) => {
+    try {
+      await camerasApi.startLiveView(id)
+      // Wait for stream to be ready before showing player
+      await waitForStreamReady(id)
+    } catch (err) {
+      console.warn(`Failed to start live view for ${id}:`, err)
+    }
+  }, [waitForStreamReady])
+
+  // Stop live view when leaving
+  const stopLiveView = useCallback(async (id: string) => {
+    try {
+      await camerasApi.stopLiveView(id)
+    } catch (err) {
+      console.warn(`Failed to stop live view for ${id}:`, err)
+    }
+  }, [])
+
   useEffect(() => {
     async function fetchCamera() {
       if (!cameraId) return
 
       try {
         setError(null)
-        const camera = await camerasApi.get(cameraId)
-        setCamera(camera)
+        const cameraData = await camerasApi.get(cameraId)
+        setCamera(cameraData)
+        // Start live view after fetching camera
+        await startLiveView(cameraId)
       } catch (err) {
         setError('Camera not found')
         console.error('Failed to fetch camera:', err)
@@ -34,7 +73,14 @@ export function Camera(): JSX.Element {
     }
 
     fetchCamera()
-  }, [cameraId])
+
+    // Cleanup: stop live view when leaving
+    return () => {
+      if (cameraId) {
+        stopLiveView(cameraId)
+      }
+    }
+  }, [cameraId, startLiveView, stopLiveView])
 
   const handleBack = () => {
     navigate('/live')

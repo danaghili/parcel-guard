@@ -64,9 +64,11 @@ export function CameraHealthTable({ cameras }: CameraHealthTableProps) {
                 }`}>
                   {camera.status === 'online' ? 'Online' : 'Offline'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {formatLastSeen(camera.lastSeen)}
-                </p>
+                {camera.status === 'offline' && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Last seen {formatLastSeen(camera.lastSeen)}
+                  </p>
+                )}
               </div>
 
               <Link

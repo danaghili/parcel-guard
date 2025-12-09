@@ -39,7 +39,7 @@ export const systemRoutes: FastifyPluginAsync = async (
     return {
       status: 'ok',
       timestamp: Date.now(),
-      version: '0.1.0',
+      version: '0.10.0',
     }
   })
 
@@ -52,7 +52,7 @@ export const systemRoutes: FastifyPluginAsync = async (
     const cameraStats = getCameraCount()
 
     const status: SystemStatus = {
-      version: '0.1.0',
+      version: '0.10.0',
       uptime: os.uptime(),
       memory: {
         used: usedMemory,

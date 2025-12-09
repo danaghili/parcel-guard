@@ -39,15 +39,7 @@ const DEFAULT_OPTIONS: Required<UseHlsStreamOptions> = {
 }
 
 const HLS_CONFIG: Partial<Hls['config']> = {
-  lowLatencyMode: true,
-  liveSyncDuration: 3,
-  liveMaxLatencyDuration: 10,
-  manifestLoadingMaxRetry: 3,
-  levelLoadingMaxRetry: 3,
-  fragLoadingMaxRetry: 3,
-  manifestLoadingTimeOut: 10000,
-  levelLoadingTimeOut: 10000,
-  fragLoadingTimeOut: 20000,
+  // Minimal config - let HLS.js use its defaults
 }
 
 function calculateRetryDelay(
@@ -138,8 +130,15 @@ export function useHlsStream(
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Try to recover network error first
-              hls.startLoad()
+              // For manifest loading errors (404), schedule a full retry
+              // This handles the case where stream isn't ready yet
+              if (data.details === 'manifestLoadError' || data.details === 'manifestParsingError') {
+                setStatus('loading')
+                scheduleRetry()
+              } else {
+                // Try to recover other network errors first
+                hls.startLoad()
+              }
               break
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError()
@@ -193,8 +192,27 @@ export function useHlsStream(
     const video = videoRef.current
     if (!video) return
 
-    const handlePlaying = () => setStatus('playing')
-    const handleWaiting = () => setStatus('loading')
+    let waitingTimeout: NodeJS.Timeout | null = null
+
+    const handlePlaying = () => {
+      // Clear any pending waiting timeout
+      if (waitingTimeout) {
+        clearTimeout(waitingTimeout)
+        waitingTimeout = null
+      }
+      setStatus('playing')
+    }
+
+    const handleWaiting = () => {
+      // Only show loading if buffering lasts more than 2 seconds
+      // Brief buffering is normal for HLS
+      if (waitingTimeout) return
+      waitingTimeout = setTimeout(() => {
+        setStatus('loading')
+        waitingTimeout = null
+      }, 2000)
+    }
+
     const handleError = () => {
       if (isNativeHls) {
         setStatus('error')
@@ -208,6 +226,7 @@ export function useHlsStream(
     video.addEventListener('error', handleError)
 
     return () => {
+      if (waitingTimeout) clearTimeout(waitingTimeout)
       video.removeEventListener('playing', handlePlaying)
       video.removeEventListener('waiting', handleWaiting)
       video.removeEventListener('error', handleError)

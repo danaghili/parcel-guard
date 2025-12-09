@@ -45,9 +45,9 @@ export function SystemStats({ version, uptime, memory }: SystemStatsProps) {
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatUptime(uptime)}</p>
       </div>
 
-      {/* Memory */}
+      {/* Hub Memory (RAM) */}
       <div className="bg-white dark:bg-gray-800 rounded-lg p-4 col-span-2 md:col-span-1">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Memory</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Hub Memory (RAM)</p>
         <p className="text-2xl font-bold text-gray-900 dark:text-white">{memory.percentage}%</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {formatBytes(memory.used)} / {formatBytes(memory.total)}

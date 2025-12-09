@@ -12,6 +12,7 @@ import { settingsRoutes } from './routes/settings'
 import { camerasRoutes } from './routes/cameras'
 import { systemRoutes } from './routes/system'
 import { eventsRoutes } from './routes/events'
+import { mqttService } from './services/mqtt'
 
 const PORT = parseInt(process.env.PORT ?? '3000', 10)
 const HOST = process.env.HOST ?? '0.0.0.0'
@@ -82,8 +83,28 @@ async function start(): Promise<void> {
   const server = await buildServer()
 
   try {
+    // Initialize MQTT service
+    mqttService.setLogger(server.log)
+    try {
+      await mqttService.connect()
+      server.log.info('MQTT service connected')
+    } catch (err) {
+      server.log.warn({ err }, 'MQTT connection failed - live view features will be unavailable')
+    }
+
     await server.listen({ port: PORT, host: HOST })
     server.log.info(`Server running at http://${HOST}:${PORT}`)
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      server.log.info('Shutting down...')
+      await mqttService.disconnect()
+      await server.close()
+      process.exit(0)
+    }
+
+    process.on('SIGTERM', shutdown)
+    process.on('SIGINT', shutdown)
   } catch (err) {
     server.log.error(err)
     process.exit(1)

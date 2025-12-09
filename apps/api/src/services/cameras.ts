@@ -33,14 +33,49 @@ function rowToCamera(row: CameraRow): Camera {
   }
 }
 
+// Consider a camera offline if no status received in 3 minutes
+const OFFLINE_THRESHOLD_SECONDS = 180
+
 export function getAllCameras(): Camera[] {
   const db = getDb()
+
+  // First, mark cameras as offline if they haven't been seen recently
+  markStaleOffline()
+
   const rows = db.prepare('SELECT * FROM cameras ORDER BY name').all() as CameraRow[]
   return rows.map(rowToCamera)
 }
 
+/**
+ * Mark cameras as offline if they haven't sent a status update recently
+ */
+export function markStaleOffline(): void {
+  const db = getDb()
+  const cutoff = Math.floor(Date.now() / 1000) - OFFLINE_THRESHOLD_SECONDS
+
+  // Handle various lastSeen formats:
+  // - NULL: mark offline
+  // - Unix seconds (10 digits): compare directly
+  // - Unix milliseconds (13 digits): divide by 1000
+  // - ISO string: parse and compare
+  db.prepare(`
+    UPDATE cameras
+    SET status = 'offline', updatedAt = unixepoch()
+    WHERE status = 'online' AND (
+      lastSeen IS NULL
+      OR (typeof(lastSeen) = 'integer' AND lastSeen > 1000000000000 AND lastSeen / 1000 < ?)
+      OR (typeof(lastSeen) = 'integer' AND lastSeen <= 1000000000000 AND lastSeen < ?)
+      OR (typeof(lastSeen) = 'text' AND lastSeen != '' AND strftime('%s', lastSeen) < ?)
+    )
+  `).run(cutoff, cutoff, cutoff)
+}
+
 export function getCameraById(id: string): Camera | null {
   const db = getDb()
+
+  // First, mark cameras as offline if they haven't been seen recently
+  markStaleOffline()
+
   const row = db.prepare('SELECT * FROM cameras WHERE id = ?').get(id) as CameraRow | undefined
 
   if (!row) {
@@ -48,6 +83,28 @@ export function getCameraById(id: string): Camera | null {
   }
 
   return rowToCamera(row)
+}
+
+/**
+ * Normalize a timestamp to unix seconds
+ */
+function normalizeTimestamp(timestamp: unknown): number {
+  if (typeof timestamp === 'string') {
+    // ISO string like "2025-12-09T13:44:53.827708Z"
+    const parsed = Date.parse(timestamp)
+    if (!isNaN(parsed)) {
+      return Math.floor(parsed / 1000)
+    }
+  }
+  if (typeof timestamp === 'number') {
+    // If it's in milliseconds (> year 2001 in seconds), convert to seconds
+    if (timestamp > 1_000_000_000_000) {
+      return Math.floor(timestamp / 1000)
+    }
+    return Math.floor(timestamp)
+  }
+  // Fallback to now
+  return Math.floor(Date.now() / 1000)
 }
 
 export function updateCameraHealth(id: string, health: CameraHealth): Camera {
@@ -59,12 +116,15 @@ export function updateCameraHealth(id: string, health: CameraHealth): Camera {
     throw Errors.notFound('Camera')
   }
 
+  // Normalize timestamp to unix seconds
+  const lastSeenSeconds = normalizeTimestamp(health.timestamp)
+
   // Update camera status and lastSeen
   db.prepare(`
     UPDATE cameras
     SET status = 'online', lastSeen = ?, updatedAt = unixepoch()
     WHERE id = ?
-  `).run(health.timestamp, id)
+  `).run(lastSeenSeconds, id)
 
   const camera = getCameraById(id)
   if (!camera) {
@@ -76,6 +136,9 @@ export function updateCameraHealth(id: string, health: CameraHealth): Camera {
 
 export function getCameraCount(): { total: number; online: number; offline: number } {
   const db = getDb()
+
+  // First, mark cameras as offline if they haven't been seen recently
+  markStaleOffline()
 
   const total = (
     db.prepare('SELECT COUNT(*) as count FROM cameras').get() as { count: number }

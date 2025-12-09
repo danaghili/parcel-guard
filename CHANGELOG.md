@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2024-12-09
+
+### Fixed
+- HLS streaming stability in production PWA
+  - PWA service worker was intercepting and caching HLS stream requests
+  - Added `NetworkOnly` handler for `/streams/` in workbox config
+  - Streams now work reliably without constant buffering/reconnects
+- Camera offline detection
+  - Cameras were showing "online" even when physically unreachable
+  - Added `markStaleOffline()` function to mark cameras offline after 3 minutes of no status
+  - Added `normalizeTimestamp()` to handle various timestamp formats (ISO strings, milliseconds, seconds)
+  - Offline detection now runs on every camera query
+
+### Changed
+- Migrated database and all data to 240GB SSD
+  - Database now at `/mnt/ssd/parcelguard/data/parcelguard.db`
+  - Clips at `/mnt/ssd/parcelguard/clips/`
+  - Thumbnails at `/mnt/ssd/parcelguard/thumbnails/`
+  - Updated API service config with correct paths
+- Updated API version to 0.10.0 (was incorrectly showing 0.1.0 in System Health)
+
+### Documentation
+- Major update to ARCHITECTURE.md
+  - Updated system diagram to reflect on-device motion detection architecture
+  - Added MQTT broker (Mosquitto) to tech stack
+  - Updated data flow diagrams for live streaming and motion detection
+  - Updated storage layout with correct SSD paths
+  - Updated services sections for hub and cameras
+- Complete rewrite of DEPLOYMENT_SPEC.md
+  - Replaced outdated Cloudflare Tunnel with Tailscale Funnel
+  - Replaced Frigate with on-device motion detection (Picamera2 + OpenCV)
+  - Updated all paths, service configs, and procedures
+  - Added MQTT setup and camera script deployment
+
 ## [0.9.0] - 2024-12-07
 
 ### Added

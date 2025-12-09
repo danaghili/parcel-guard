@@ -9,6 +9,7 @@ import {
   deleteCamera,
   UpdateCameraInput,
 } from '../services/cameras'
+import { mqttService } from '../services/mqtt'
 import { ApiError } from '../lib/errors'
 import type { CameraHealth } from '@parcelguard/shared'
 
@@ -259,6 +260,111 @@ export const camerasRoutes: FastifyPluginAsync = async (
         }
         throw error
       }
+    },
+  )
+
+  // Start live view - sends MQTT command to camera
+  server.post<{ Params: CameraParams }>(
+    '/cameras/:id/live/start',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const { id } = request.params
+
+      // Verify camera exists
+      const camera = getCameraById(id)
+      if (!camera) {
+        return reply.status(404).send({
+          error: 'NOT_FOUND',
+          message: 'Camera not found',
+        })
+      }
+
+      // Check MQTT connection
+      if (!mqttService.isConnected()) {
+        return reply.status(503).send({
+          error: 'SERVICE_UNAVAILABLE',
+          message: 'MQTT service not connected',
+        })
+      }
+
+      const sent = mqttService.startLiveView(id)
+
+      if (!sent) {
+        return reply.status(500).send({
+          error: 'INTERNAL_ERROR',
+          message: 'Failed to send live view command',
+        })
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Live view start command sent',
+      })
+    },
+  )
+
+  // Stop live view - sends MQTT command to camera
+  server.post<{ Params: CameraParams }>(
+    '/cameras/:id/live/stop',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const { id } = request.params
+
+      // Verify camera exists
+      const camera = getCameraById(id)
+      if (!camera) {
+        return reply.status(404).send({
+          error: 'NOT_FOUND',
+          message: 'Camera not found',
+        })
+      }
+
+      // Check MQTT connection
+      if (!mqttService.isConnected()) {
+        return reply.status(503).send({
+          error: 'SERVICE_UNAVAILABLE',
+          message: 'MQTT service not connected',
+        })
+      }
+
+      const sent = mqttService.stopLiveView(id)
+
+      if (!sent) {
+        return reply.status(500).send({
+          error: 'INTERNAL_ERROR',
+          message: 'Failed to send stop live view command',
+        })
+      }
+
+      return reply.send({
+        success: true,
+        message: 'Live view stop command sent',
+      })
+    },
+  )
+
+  // Get stream status - check if camera stream is ready
+  server.get<{ Params: CameraParams }>(
+    '/cameras/:id/stream-status',
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      const { id } = request.params
+
+      // Verify camera exists
+      const camera = getCameraById(id)
+      if (!camera) {
+        return reply.status(404).send({
+          error: 'NOT_FOUND',
+          message: 'Camera not found',
+        })
+      }
+
+      const ready = mqttService.getStreamStatus(id)
+
+      return reply.send({
+        success: true,
+        data: { ready },
+      })
     },
   )
 }

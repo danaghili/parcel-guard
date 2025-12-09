@@ -337,10 +337,11 @@ export const eventsRoutes: FastifyPluginAsync = async (
       }
 
       // Generate thumbnail from video
+      // Use -ss 00:00:00.5 to handle short clips, -update 1 for newer ffmpeg versions
       const thumbnailPath = path.join(THUMBNAILS_PATH, `${cameraId}_${dateStr}_${timeStr}.jpg`)
       try {
         await execAsync(
-          `ffmpeg -i "${filePath}" -ss 00:00:01 -vframes 1 -y "${thumbnailPath}" 2>/dev/null`
+          `ffmpeg -i "${filePath}" -ss 00:00:00.5 -vframes 1 -update 1 -y "${thumbnailPath}" 2>/dev/null`
         )
         server.log.debug({ thumbnailPath }, 'Thumbnail generated')
 

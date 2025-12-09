@@ -2,7 +2,10 @@
 
 ## Overview
 
-This document defines the deployment architecture, setup procedures, and maintenance processes for ParcelGuard. The system is designed to be self-hosted on a Raspberry Pi 4 hub with remote access capability.
+This document defines the deployment architecture, setup procedures, and maintenance processes for ParcelGuard. The system is designed to be self-hosted on a Raspberry Pi 4 hub with remote access via Tailscale.
+
+**Version:** 0.10.0
+**Last Updated:** December 9, 2024
 
 ---
 
@@ -11,88 +14,101 @@ This document defines the deployment architecture, setup procedures, and mainten
 ```
                                     INTERNET
                                         │
-                                        ▼
-                            ┌───────────────────────┐
-                            │   4G WiFi Router      │
-                            │   (existing)          │
-                            │                       │
-                            │   Cloudflare Tunnel   │
-                            │   ───────────────►    │──── Remote Access
-                            └───────────┬───────────┘     (phone outside
-                                        │                  local network)
-                    ┌───────────────────┼───────────────────┐
-                    │                   │                   │
-                    │ WiFi              │ WiFi              │ WiFi
-                    ▼                   ▼                   ▼
-┌───────────────────────┐   ┌───────────────────────────────────────────────┐
-│     Pi Zero 2 W       │   │                  Pi 4 Hub                     │
-│     (Camera 1)        │   │                                               │
-│                       │   │  ┌─────────┐ ┌─────────┐ ┌────────────────┐   │
-│  ┌─────────────────┐  │   │  │  Nginx  │ │ Node.js │ │ Frigate/Motion │   │
-│  │  rpicam-vid     │  │   │  │  :80    │ │ API     │ │ :5000          │   │
-│  │  RTSP :8554     │──┼───┼─►│  :443   │ │ :3000   │ │                │   │
-│  └─────────────────┘  │   │  └────┬────┘ └────┬────┘ └───────┬────────┘   │
-└───────────────────────┘   │       │           │              │            │
-                            │       └───────────┴──────────────┘            │
-┌───────────────────────┐   │                      │                        │
-│     Pi Zero 2 W       │   │               ┌──────▼──────┐                 │
-│     (Camera 2)        │   │               │   SQLite    │                 │
-│                       │   │               │   Database  │                 │
-│  ┌─────────────────┐  │   │               └─────────────┘                 │
-│  │  rpicam-vid     │  │   │                                               │
-│  │  RTSP :8554     │──┼───┤               ┌─────────────┐                 │
-│  └─────────────────┘  │   │               │  SSD 256GB  │                 │
-└───────────────────────┘   │               │  /mnt/ssd   │                 │
-                            │               │  - clips/   │                 │
-                            │               │  - thumbs/  │                 │
-                            │               └─────────────┘                 │
-                            └───────────────────────────────────────────────┘
-                                        ▲
-                                        │ WiFi (local)
-                                        ▼
-                            ┌───────────────────────┐
-                            │      Phone/PWA        │
-                            │   (local access)      │
-                            └───────────────────────┘
+                    ┌───────────────────┴───────────────────┐
+                    │                                       │
+                    ▼                                       ▼
+        ┌─────────────────────┐               ┌─────────────────────┐
+        │   Tailscale Funnel  │               │     ntfy.sh         │
+        │   (Public HTTPS)    │               │   (Push Notify)     │
+        └──────────┬──────────┘               └──────────▲──────────┘
+                   │                                     │
+                   │ :80 (proxied)                       │
+    ═══════════════╪═════════════════════════════════════╪══════════════════
+                   │            TAILSCALE VPN            │
+    ═══════════════╪═════════════════════════════════════╪══════════════════
+                   │                                     │
+                   ▼                                     │
+    ┌──────────────────────────────────────────────────────────────────────┐
+    │                         PI 4 HUB (100.72.88.127)                     │
+    │                                                                      │
+    │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌───────────────┐   │
+    │  │   Nginx    │  │  Fastify   │  │   MQTT     │  │   MediaMTX    │   │
+    │  │   :80      │◄─┤  API :3000 │◄─┤  Mosquitto │  │   (HLS :8888) │   │
+    │  └─────┬──────┘  └─────┬──────┘  └──────┬─────┘  └───────▲───────┘   │
+    │        │               │                │                │           │
+    │        │ /streams/* ───────────────────────────────────►─┘           │
+    │        │ (proxy)       │                │                            │
+    │        │         ┌─────▼──────┐         │                            │
+    │        │         │   SQLite   │         │ MQTT pub/sub               │
+    │        │         │  Database  │         │ (events, status)           │
+    │        │         └────────────┘         │                            │
+    │        │                                │                            │
+    │        │         ┌──────────────────────▼────────────────┐           │
+    │        │         │       240GB SSD (/mnt/ssd)            │           │
+    │  ┌─────▼──────┐  │  ┌──────────┐ ┌─────────┐ ┌─────────┐ │           │
+    │  │  React PWA │  │  │  clips/  │ │ thumbs/ │ │  data/  │ │           │
+    │  │  (static)  │  │  │  (video) │ │ (jpeg)  │ │ (db)    │ │           │
+    │  └────────────┘  │  └──────────┘ └─────────┘ └─────────┘ │           │
+    │                  └───────────────────────────────────────┘           │
+    └──────────────────────────────────────────────────────────────────────┘
+                   ▲                                     ▲
+                   │ RTSP :8554 (on-demand)              │ RTSP :8554
+                   │ MQTT (status/events)                │ MQTT
+                   │ (via Tailscale)                     │ (via Tailscale)
+    ┌──────────────┴───────────────┐    ┌───────────────┴──────────────────┐
+    │  PI ZERO 2W - CAM1           │    │  PI ZERO 2W - CAM2               │
+    │  (100.120.125.42)            │    │  (100.69.12.33)                  │
+    │                              │    │                                  │
+    │  ┌─────────────────────────┐ │    │  ┌─────────────────────────┐     │
+    │  │   Motion Detection      │ │    │  │   Motion Detection      │     │
+    │  │   (on-device Python)    │ │    │  │   (on-device Python)    │     │
+    │  │                         │ │    │  │                         │     │
+    │  │  Camera Module 3        │ │    │  │  Camera Module 3        │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  Picamera2 + OpenCV     │ │    │  │  Picamera2 + OpenCV     │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  Motion → Record clip   │ │    │  │  Motion → Record clip   │     │
+    │  │       ↓                 │ │    │  │       ↓                 │     │
+    │  │  SCP to hub + MQTT      │ │    │  │  SCP to hub + MQTT      │     │
+    │  └─────────────────────────┘ │    │  └─────────────────────────┘     │
+    │                              │    │                                  │
+    │  Power: 20,000mAh USB Bank   │    │  Power: 20,000mAh USB Bank       │
+    └──────────────────────────────┘    └──────────────────────────────────┘
 ```
 
 ---
 
 ## Network Configuration
 
-### IP Addressing
+### IP Addressing (Tailscale)
 
-| Device | Hostname | Static IP | Purpose |
-|--------|----------|-----------|---------|
-| Pi 4 Hub | `parcelguard-hub` | `192.168.1.10` | Central server |
-| Pi Zero 1 | `parcelguard-cam1` | `192.168.1.21` | Camera unit |
-| Pi Zero 2 | `parcelguard-cam2` | `192.168.1.22` | Camera unit |
+| Device | Tailscale IP | Hostname | Purpose |
+|--------|--------------|----------|---------|
+| Pi 4 Hub | 100.72.88.127 | parcelguard-hub | Central server |
+| Pi Zero 1 | 100.120.125.42 | parcelguard-cam1 | Camera unit |
+| Pi Zero 2 | 100.69.12.33 | parcelguard-cam2 | Camera unit |
 
-*Note: Adjust IP range to match your router's DHCP settings. Reserve these IPs in your router's admin panel.*
+*Note: Tailscale IPs are stable and work across different physical networks.*
 
 ### Ports
 
 | Port | Service | Access |
 |------|---------|--------|
-| 80 | Nginx (HTTP → HTTPS redirect) | Local + Remote |
-| 443 | Nginx (PWA + API proxy) | Local + Remote |
+| 80 | Nginx (PWA + API proxy) | Tailscale + Funnel |
 | 3000 | Node.js API | Internal only |
-| 5000 | Frigate/Motion | Internal only |
-| 8554 | RTSP streams (cameras) | Internal only |
+| 8554 | RTSP streams (MediaMTX) | Internal only |
+| 8888 | HLS streams (MediaMTX) | Via Nginx proxy |
+| 1883 | MQTT (Mosquitto) | Internal only |
 
 ### Remote Access
 
-Remote access is provided via **Cloudflare Tunnel** (free tier):
+Remote access is provided via **Tailscale Funnel** (free tier):
 
 - No port forwarding required on router
 - No static IP required
 - HTTPS encryption included
-- Access via subdomain: `parcelguard.yourdomain.com`
-
-**Alternative options (if Cloudflare not suitable):**
-- Tailscale (VPN-based, free tier available)
-- WireGuard (self-hosted VPN)
-- ngrok (simple but has limitations on free tier)
+- Works across different networks (4G, WiFi, etc.)
+- Access via: `https://parcelguard-hub.tail[xxxxx].ts.net`
 
 ---
 
@@ -100,20 +116,21 @@ Remote access is provided via **Cloudflare Tunnel** (free tier):
 
 ### Pi 4 Hub Services
 
-| Service | Technology | Managed By | Auto-Start |
-|---------|------------|------------|------------|
-| Nginx | nginx | systemd | Yes |
-| API Server | Node.js + Fastify | systemd | Yes |
-| Motion Detection | Frigate or Motion | systemd/Docker | Yes |
-| Tunnel | cloudflared | systemd | Yes |
-| Database | SQLite | File-based | N/A |
+| Service | Technology | Managed By | Port | Auto-Start |
+|---------|------------|------------|------|------------|
+| Nginx | nginx | systemd | 80 | Yes |
+| API Server | Node.js + Fastify | systemd | 3000 | Yes |
+| MediaMTX | mediamtx | systemd | 8554, 8888 | Yes |
+| MQTT Broker | Mosquitto | systemd | 1883 | Yes |
+| Tailscale | tailscaled | systemd | - | Yes |
+| Database | SQLite | File-based | N/A | N/A |
 
 ### Pi Zero Camera Services
 
 | Service | Technology | Managed By | Auto-Start |
 |---------|------------|------------|------------|
-| RTSP Stream | rpicam-vid | systemd | Yes |
-| Health Check | Shell script | systemd timer | Yes |
+| Motion Detection | Python (Picamera2 + OpenCV) | systemd | Yes |
+| Tailscale | tailscaled | systemd | Yes |
 
 ---
 
@@ -122,43 +139,42 @@ Remote access is provided via **Cloudflare Tunnel** (free tier):
 ### Pi 4 Hub
 
 ```
-/home/pi/
-├── parcelguard/
-│   ├── apps/
-│   │   ├── api/              # Backend API
-│   │   └── web/              # Built PWA files
-│   ├── scripts/
-│   │   ├── setup-hub.sh      # Initial setup
-│   │   ├── update.sh         # Update application
-│   │   └── backup.sh         # Backup database + config
-│   └── config/
-│       ├── frigate.yml       # Frigate configuration
-│       └── nginx.conf        # Nginx site config
+/home/dan/
+├── parcelguard-api/           # Backend API (deployed)
+│   ├── dist/                  # Compiled TypeScript
+│   ├── node_modules/
+│   └── package.json
+├── parcelguard-web/           # Built PWA files (deployed)
+│   ├── assets/
+│   ├── index.html
+│   └── sw.js
+└── mediamtx.yml               # MediaMTX configuration
 
-/mnt/ssd/
-├── parcelguard/
-│   ├── data/
-│   │   └── parcelguard.db    # SQLite database
-│   ├── clips/                # Motion event recordings
-│   │   └── {camera_id}/
-│   │       └── {date}/
-│   │           └── {timestamp}.mp4
-│   ├── thumbnails/           # Event thumbnails
-│   │   └── {event_id}.jpg
-│   └── logs/                 # Application logs
+/mnt/ssd/parcelguard/          # 240GB SSD (all data)
+├── data/
+│   └── parcelguard.db         # SQLite database
+├── clips/                     # Motion event recordings
+│   ├── cam1/
+│   │   └── 20241207_143022.mp4
+│   └── cam2/
+│       └── 20241207_152145.mp4
+└── thumbnails/                # Event thumbnails
+    ├── cam1_20241207_143022.jpg
+    └── cam2_20241207_152145.jpg
 ```
 
 ### Pi Zero Cameras
 
 ```
-/home/pi/
-├── parcelguard/
-│   ├── scripts/
-│   │   ├── start-stream.sh   # Start RTSP stream
-│   │   ├── health-check.sh   # Report status to hub
-│   │   └── update.sh         # Update scripts from hub
-│   └── config/
-│       └── camera.conf       # Camera-specific settings
+/home/dan/
+├── motion-detect.py           # Main motion detection script
+├── motion-detect.env          # Configuration (camera ID, hub IP, etc.)
+└── .ssh/
+    └── id_ed25519             # SSH key for SCP to hub
+
+/dev/shm/parcelguard/          # RAM disk (temporary files)
+├── buffer.h264                # Circular buffer for recording
+└── current_clip.mp4           # Current recording in progress
 ```
 
 ---
@@ -169,8 +185,8 @@ Remote access is provided via **Cloudflare Tunnel** (free tier):
 
 - Raspberry Pi Imager installed on your computer
 - SSH enabled on all devices
-- All devices connected to the same WiFi network
-- Domain name (for Cloudflare Tunnel) or Cloudflare account
+- Tailscale account (free tier)
+- All devices connected to internet (any network)
 
 ---
 
@@ -183,7 +199,7 @@ Remote access is provided via **Cloudflare Tunnel** (free tier):
 3. Configure settings (gear icon):
    - Hostname: `parcelguard-hub`
    - Enable SSH (password or key)
-   - Set username: `pi`
+   - Set username: `dan`
    - Set password: (secure password)
    - Configure WiFi
    - Set locale/timezone
@@ -194,7 +210,7 @@ Remote access is provided via **Cloudflare Tunnel** (free tier):
 
 ```bash
 # SSH into the hub
-ssh pi@parcelguard-hub.local
+ssh dan@parcelguard-hub.local
 
 # Update system
 sudo apt update && sudo apt upgrade -y
@@ -206,7 +222,8 @@ sudo apt install -y \
   nginx \
   sqlite3 \
   ffmpeg \
-  python3-pip
+  mosquitto \
+  mosquitto-clients
 
 # Install Node.js 20.x
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -217,7 +234,23 @@ node --version  # Should show v20.x
 npm --version
 ```
 
-#### 1.3 Mount SSD
+#### 1.3 Install Tailscale
+
+```bash
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+
+# Start Tailscale and authenticate
+sudo tailscale up
+
+# Enable Tailscale Funnel for public HTTPS
+sudo tailscale funnel --bg 80
+
+# Check status
+tailscale status
+```
+
+#### 1.4 Mount SSD
 
 ```bash
 # Identify SSD (usually /dev/sda1 with Argon ONE case)
@@ -239,45 +272,59 @@ echo "UUID=your-uuid-here /mnt/ssd ext4 defaults,noatime 0 2" | sudo tee -a /etc
 sudo mount -a
 
 # Set ownership
-sudo chown -R pi:pi /mnt/ssd
+sudo chown -R dan:dan /mnt/ssd
 
 # Create ParcelGuard directories
-mkdir -p /mnt/ssd/parcelguard/{data,clips,thumbnails,logs}
+mkdir -p /mnt/ssd/parcelguard/{data,clips,thumbnails}
+mkdir -p /mnt/ssd/parcelguard/clips/{cam1,cam2}
 ```
 
-#### 1.4 Clone Repository
+#### 1.5 Deploy Application
 
 ```bash
-# Clone ParcelGuard
-cd /home/pi
-git clone https://github.com/yourusername/parcelguard.git
-cd parcelguard
+# Clone and build locally, then copy to hub
+# OR copy pre-built files directly
 
-# Install dependencies
-cd apps/api && npm install
-cd ../web && npm install && npm run build
+# Create directories
+mkdir -p /home/dan/parcelguard-api
+mkdir -p /home/dan/parcelguard-web
+
+# Copy API files (from local machine)
+scp -r apps/api/dist/* dan@100.72.88.127:/home/dan/parcelguard-api/
+scp apps/api/package*.json dan@100.72.88.127:/home/dan/parcelguard-api/
+
+# Copy Web files
+scp -r apps/web/dist/* dan@100.72.88.127:/home/dan/parcelguard-web/
+
+# On hub, install production dependencies
+cd /home/dan/parcelguard-api
+npm install --production
 ```
 
-#### 1.5 Configure Services
+#### 1.6 Configure Services
 
 **API Service (`/etc/systemd/system/parcelguard-api.service`):**
 
 ```ini
 [Unit]
 Description=ParcelGuard API Server
-After=network.target
+After=network.target mosquitto.service
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/parcelguard/apps/api
+User=dan
+WorkingDirectory=/home/dan/parcelguard-api
 ExecStart=/usr/bin/node dist/index.js
 Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=DATABASE_PATH=/mnt/ssd/parcelguard/data/parcelguard.db
 Environment=CLIPS_PATH=/mnt/ssd/parcelguard/clips
+Environment=THUMBNAILS_PATH=/mnt/ssd/parcelguard/thumbnails
 Environment=PORT=3000
+Environment=MQTT_BROKER=mqtt://localhost:1883
+Environment=NTFY_TOPIC=parcelguard
+Environment=APP_URL=https://parcelguard-hub.tail[xxxxx].ts.net
 
 [Install]
 WantedBy=multi-user.target
@@ -288,10 +335,10 @@ WantedBy=multi-user.target
 ```nginx
 server {
     listen 80;
-    server_name parcelguard-hub.local parcelguard.yourdomain.com;
+    server_name _;
 
     # Serve PWA static files
-    root /home/pi/parcelguard/apps/web/dist;
+    root /home/dan/parcelguard-web;
     index index.html;
 
     # PWA routing - serve index.html for all routes
@@ -301,7 +348,7 @@ server {
 
     # API proxy
     location /api/ {
-        proxy_pass http://localhost:3000/;
+        proxy_pass http://localhost:3000/api/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -310,23 +357,20 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # Video clips (direct serve from SSD)
-    location /clips/ {
-        alias /mnt/ssd/parcelguard/clips/;
-        add_header Accept-Ranges bytes;
-    }
-
-    # Thumbnails
-    location /thumbnails/ {
-        alias /mnt/ssd/parcelguard/thumbnails/;
+    # HLS streams proxy
+    location /streams/ {
+        proxy_pass http://localhost:8888/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_buffering off;
     }
 }
 ```
 
 ```bash
 # Enable site
-sudo ln -s /etc/nginx/sites-available/parcelguard /etc/nginx/sites-enabled/
-sudo rm /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/parcelguard /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 
@@ -335,63 +379,70 @@ sudo systemctl enable parcelguard-api
 sudo systemctl start parcelguard-api
 ```
 
-#### 1.6 Install Frigate (Docker)
+#### 1.7 Install MediaMTX
 
 ```bash
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker pi
-
-# Create Frigate config directory
-mkdir -p /home/pi/parcelguard/config
-
-# Create Frigate config (config/frigate.yml)
-# See Frigate Configuration section below
-
-# Run Frigate container
-docker run -d \
-  --name frigate \
-  --restart=unless-stopped \
-  --privileged \
-  -v /home/pi/parcelguard/config/frigate.yml:/config/config.yml \
-  -v /mnt/ssd/parcelguard/clips:/media/frigate/clips \
-  -v /etc/localtime:/etc/localtime:ro \
-  -p 5000:5000 \
-  -p 8971:8971 \
-  ghcr.io/blakeblackshear/frigate:stable
+# Download MediaMTX
+wget https://github.com/bluenviron/mediamtx/releases/download/v1.5.1/mediamtx_v1.5.1_linux_arm64v8.tar.gz
+tar -xzf mediamtx_v1.5.1_linux_arm64v8.tar.gz
+sudo mv mediamtx /usr/local/bin/
 ```
 
-#### 1.7 Configure Remote Access (Cloudflare Tunnel)
+**MediaMTX Configuration (`/home/dan/mediamtx.yml`):**
+
+```yaml
+# Listen on all interfaces for RTSP
+rtspAddress: :8554
+hlsAddress: :8888
+
+# HLS settings (optimized for low latency)
+hlsSegmentDuration: 1s
+hlsSegmentCount: 3
+hlsPartDuration: 200ms
+
+# Path configuration
+paths:
+  cam1:
+    source: publisher
+  cam2:
+    source: publisher
+```
+
+**MediaMTX Service (`/etc/systemd/system/mediamtx.service`):**
+
+```ini
+[Unit]
+Description=MediaMTX RTSP/HLS Server
+After=network.target
+
+[Service]
+Type=simple
+User=dan
+WorkingDirectory=/home/dan
+ExecStart=/usr/local/bin/mediamtx /home/dan/mediamtx.yml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
 
 ```bash
-# Install cloudflared
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb -o cloudflared.deb
-sudo dpkg -i cloudflared.deb
+sudo systemctl enable mediamtx
+sudo systemctl start mediamtx
+```
 
-# Authenticate (follow browser prompts)
-cloudflared tunnel login
+#### 1.8 Configure MQTT
 
-# Create tunnel
-cloudflared tunnel create parcelguard
+```bash
+# Mosquitto is already installed
+# No special configuration needed for local use
+sudo systemctl enable mosquitto
+sudo systemctl start mosquitto
 
-# Configure tunnel (~/.cloudflared/config.yml)
-cat << EOF > ~/.cloudflared/config.yml
-tunnel: parcelguard
-credentials-file: /home/pi/.cloudflared/<tunnel-id>.json
-
-ingress:
-  - hostname: parcelguard.yourdomain.com
-    service: http://localhost:80
-  - service: http_status:404
-EOF
-
-# Add DNS record
-cloudflared tunnel route dns parcelguard parcelguard.yourdomain.com
-
-# Install as service
-sudo cloudflared service install
-sudo systemctl enable cloudflared
-sudo systemctl start cloudflared
+# Test MQTT
+mosquitto_sub -t "parcelguard/#" -v &
+mosquitto_pub -t "parcelguard/test" -m "hello"
 ```
 
 ---
@@ -405,80 +456,82 @@ sudo systemctl start cloudflared
 3. Configure settings:
    - Hostname: `parcelguard-cam1` (or `cam2`)
    - Enable SSH
-   - Set username: `pi`
+   - Set username: `dan`
    - Set password
-   - Configure WiFi (same network as hub)
+   - Configure WiFi
 4. Flash to microSD card
 
 #### 2.2 Initial Setup
 
 ```bash
 # SSH into camera
-ssh pi@parcelguard-cam1.local
+ssh dan@parcelguard-cam1.local
 
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Enable camera interface
-sudo raspi-config nonint do_camera 0
-
 # Install required packages
-sudo apt install -y libcamera-tools v4l-utils
+sudo apt install -y \
+  python3-picamera2 \
+  python3-opencv \
+  python3-numpy \
+  ffmpeg \
+  paho-mqtt
+
+# Install Tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
 
 # Test camera
 libcamera-hello --list-cameras
 ```
 
-#### 2.3 Configure RTSP Streaming
-
-**Streaming Script (`/home/pi/parcelguard/scripts/start-stream.sh`):**
+#### 2.3 SSH Key Setup (for SCP to Hub)
 
 ```bash
-#!/bin/bash
+# On camera, generate SSH key
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ""
 
-# Camera configuration
-CAMERA_ID="cam1"
-RESOLUTION="1920x1080"
-FRAMERATE="15"
-BITRATE="2000000"
-PORT="8554"
+# Copy public key to hub
+ssh-copy-id dan@100.72.88.127
 
-# Start RTSP stream using rpicam-vid + mediamtx
-rpicam-vid \
-  --camera 0 \
-  --width 1920 \
-  --height 1080 \
-  --framerate $FRAMERATE \
-  --bitrate $BITRATE \
-  --codec h264 \
-  --inline \
-  --listen \
-  -t 0 \
-  -o tcp://0.0.0.0:$PORT
+# Test passwordless SSH
+ssh dan@100.72.88.127 "echo 'SSH works!'"
 ```
 
-*Note: For proper RTSP, we'll use mediamtx (formerly rtsp-simple-server) as a lightweight RTSP server.*
+#### 2.4 Deploy Motion Detection Script
+
+Copy `motion-detect.py` to the camera:
 
 ```bash
-# Install mediamtx
-wget https://github.com/bluenviron/mediamtx/releases/download/v1.5.1/mediamtx_v1.5.1_linux_arm64v8.tar.gz
-tar -xzf mediamtx_v1.5.1_linux_arm64v8.tar.gz
-sudo mv mediamtx /usr/local/bin/
-sudo mv mediamtx.yml /etc/
+scp /tmp/motion-detect-v2.py dan@100.120.125.42:/home/dan/motion-detect.py
 ```
 
-**Streaming Service (`/etc/systemd/system/parcelguard-camera.service`):**
+**Configuration File (`/home/dan/motion-detect.env`):**
+
+```bash
+CAMERA_ID=cam1
+HUB_IP=100.72.88.127
+HUB_USER=dan
+RTSP_URL=rtsp://100.72.88.127:8554/cam1
+MQTT_BROKER=100.72.88.127
+MOTION_SENSITIVITY=50
+```
+
+**Systemd Service (`/etc/systemd/system/motion-detect.service`):**
 
 ```ini
 [Unit]
-Description=ParcelGuard Camera Stream
+Description=ParcelGuard Motion Detection
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=pi
-ExecStart=/home/pi/parcelguard/scripts/start-stream.sh
+User=dan
+WorkingDirectory=/home/dan
+EnvironmentFile=/home/dan/motion-detect.env
+ExecStart=/usr/bin/python3 /home/dan/motion-detect.py
 Restart=always
 RestartSec=10
 
@@ -487,175 +540,49 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-# Enable and start
-sudo systemctl enable parcelguard-camera
-sudo systemctl start parcelguard-camera
-```
-
-#### 2.4 Health Check Script
-
-**Health Check (`/home/pi/parcelguard/scripts/health-check.sh`):**
-
-```bash
-#!/bin/bash
-
-HUB_API="http://192.168.1.10:3000"
-CAMERA_ID="cam1"
-
-# Get system stats
-TEMP=$(vcgencmd measure_temp | grep -oP '[0-9.]+')
-UPTIME=$(uptime -p)
-IP=$(hostname -I | awk '{print $1}')
-
-# Report to hub
-curl -s -X POST "$HUB_API/api/cameras/$CAMERA_ID/health" \
-  -H "Content-Type: application/json" \
-  -d "{\"temperature\": $TEMP, \"uptime\": \"$UPTIME\", \"ip\": \"$IP\"}"
-```
-
-**Timer (`/etc/systemd/system/parcelguard-health.timer`):**
-
-```ini
-[Unit]
-Description=ParcelGuard Health Check Timer
-
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=1min
-
-[Install]
-WantedBy=timers.target
-```
-
----
-
-## Frigate Configuration
-
-**`/home/pi/parcelguard/config/frigate.yml`:**
-
-```yaml
-mqtt:
-  enabled: false
-
-database:
-  path: /media/frigate/frigate.db
-
-cameras:
-  cam1:
-    ffmpeg:
-      inputs:
-        - path: rtsp://192.168.1.21:8554/stream
-          roles:
-            - detect
-            - record
-    detect:
-      enabled: true
-      width: 1920
-      height: 1080
-      fps: 5
-    record:
-      enabled: true
-      retain:
-        days: 14
-        mode: motion
-      events:
-        retain:
-          default: 30
-          mode: motion
-    snapshots:
-      enabled: true
-      retain:
-        default: 30
-
-  cam2:
-    ffmpeg:
-      inputs:
-        - path: rtsp://192.168.1.22:8554/stream
-          roles:
-            - detect
-            - record
-    detect:
-      enabled: true
-      width: 1920
-      height: 1080
-      fps: 5
-    record:
-      enabled: true
-      retain:
-        days: 14
-        mode: motion
-      events:
-        retain:
-          default: 30
-          mode: motion
-    snapshots:
-      enabled: true
-      retain:
-        default: 30
-
-detectors:
-  cpu1:
-    type: cpu
-
-record:
-  enabled: true
-  retain:
-    days: 14
-    mode: motion
-  events:
-    pre_capture: 5
-    post_capture: 10
+sudo systemctl enable motion-detect
+sudo systemctl start motion-detect
 ```
 
 ---
 
 ## Update Procedures
 
-### Application Update
-
-**Update Script (`/home/pi/parcelguard/scripts/update.sh`):**
+### API Update
 
 ```bash
-#!/bin/bash
-set -e
-
-echo "=== ParcelGuard Update ==="
-cd /home/pi/parcelguard
-
-# Pull latest changes
-echo "Pulling latest code..."
-git pull origin main
-
-# Update API
-echo "Updating API..."
+# On local machine, build and deploy
 cd apps/api
-npm install --production
 npm run build
 
-# Update Web
-echo "Updating Web..."
-cd ../web
-npm install
+# Copy to hub
+scp -r dist/* dan@100.72.88.127:/home/dan/parcelguard-api/
+
+# On hub, restart service
+ssh dan@100.72.88.127 "sudo systemctl restart parcelguard-api"
+```
+
+### Web Update
+
+```bash
+# On local machine, build
+cd apps/web
 npm run build
 
-# Restart services
-echo "Restarting services..."
-sudo systemctl restart parcelguard-api
-sudo systemctl reload nginx
+# Copy to hub
+scp -r dist/* dan@100.72.88.127:/home/dan/parcelguard-web/
 
-echo "=== Update Complete ==="
+# No restart needed (static files)
 ```
 
 ### Camera Update
 
-Updates pushed from hub:
-
 ```bash
-# From hub, push scripts to camera
-scp /home/pi/parcelguard/scripts/pi-zero/* pi@parcelguard-cam1.local:/home/pi/parcelguard/scripts/
+# Push updated script to camera
+scp /tmp/motion-detect-v2.py dan@100.120.125.42:/home/dan/motion-detect.py
 
-# Restart camera service
-ssh pi@parcelguard-cam1.local "sudo systemctl restart parcelguard-camera"
+# Restart service
+ssh dan@100.120.125.42 "sudo systemctl restart motion-detect"
 ```
 
 ---
@@ -664,10 +591,9 @@ ssh pi@parcelguard-cam1.local "sudo systemctl restart parcelguard-camera"
 
 ### Database Backup
 
-**Backup Script (`/home/pi/parcelguard/scripts/backup.sh`):**
-
 ```bash
 #!/bin/bash
+# backup.sh
 
 BACKUP_DIR="/mnt/ssd/parcelguard/backups"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -677,30 +603,10 @@ mkdir -p $BACKUP_DIR
 # Backup database
 sqlite3 /mnt/ssd/parcelguard/data/parcelguard.db ".backup '$BACKUP_DIR/parcelguard_$DATE.db'"
 
-# Backup configs
-tar -czf "$BACKUP_DIR/config_$DATE.tar.gz" \
-  /home/pi/parcelguard/config/ \
-  /etc/nginx/sites-available/parcelguard
-
 # Keep only last 7 backups
 ls -t $BACKUP_DIR/parcelguard_*.db | tail -n +8 | xargs -r rm
-ls -t $BACKUP_DIR/config_*.tar.gz | tail -n +8 | xargs -r rm
 
 echo "Backup complete: $DATE"
-```
-
-**Daily Backup Timer (`/etc/systemd/system/parcelguard-backup.timer`):**
-
-```ini
-[Unit]
-Description=Daily ParcelGuard Backup
-
-[Timer]
-OnCalendar=daily
-Persistent=true
-
-[Install]
-WantedBy=timers.target
 ```
 
 ---
@@ -711,30 +617,38 @@ WantedBy=timers.target
 
 ```bash
 # Check all services
-sudo systemctl status parcelguard-api nginx cloudflared
+sudo systemctl status parcelguard-api nginx mediamtx mosquitto tailscaled
 
-# Check Frigate
-docker ps | grep frigate
-docker logs frigate --tail 50
+# View API logs
+journalctl -u parcelguard-api -f
 
 # Check disk usage
 df -h /mnt/ssd
 
 # Check system temperature
 vcgencmd measure_temp
+
+# Check MQTT traffic
+mosquitto_sub -t "parcelguard/#" -v
 ```
 
 ### Camera Health
 
 ```bash
-# Check stream is running
-sudo systemctl status parcelguard-camera
+# SSH to camera
+ssh dan@100.120.125.42
 
-# Test stream locally
-ffprobe rtsp://localhost:8554/stream
+# Check service
+sudo systemctl status motion-detect
+
+# View logs
+journalctl -u motion-detect -f
 
 # Check temperature
 vcgencmd measure_temp
+
+# Check camera
+libcamera-hello --list-cameras
 ```
 
 ---
@@ -744,52 +658,61 @@ vcgencmd measure_temp
 ### Camera Not Streaming
 
 ```bash
-# Check service status
-sudo systemctl status parcelguard-camera
+# Check motion-detect service
+sudo systemctl status motion-detect
+journalctl -u motion-detect -f
 
 # Check camera detected
 libcamera-hello --list-cameras
 
-# Check for errors
-journalctl -u parcelguard-camera -f
+# Test RTSP to hub manually
+ffmpeg -f lavfi -i testsrc=duration=5:size=640x480:rate=30 \
+  -c:v libx264 -f rtsp rtsp://100.72.88.127:8554/test
 ```
 
 ### Hub Can't See Camera
 
 ```bash
-# Ping camera
-ping parcelguard-cam1.local
+# Check Tailscale connectivity
+tailscale ping 100.120.125.42
 
-# Test stream from hub
-ffprobe rtsp://192.168.1.21:8554/stream
+# Check camera is online in Tailscale
+tailscale status
 
-# Check camera is on network
-arp -a | grep 192.168.1.2
+# Check MQTT messages from camera
+mosquitto_sub -h localhost -t "parcelguard/cam1/#" -v
 ```
 
 ### Remote Access Not Working
 
 ```bash
-# Check tunnel status
-sudo systemctl status cloudflared
+# Check Tailscale Funnel status
+tailscale funnel status
 
-# Check tunnel logs
-journalctl -u cloudflared -f
+# Re-enable Funnel
+sudo tailscale funnel --bg 80
 
-# Verify DNS
-nslookup parcelguard.yourdomain.com
+# Check nginx is running
+sudo systemctl status nginx
+
+# Test locally first
+curl http://localhost/api/health
 ```
 
-### High CPU/Temperature
+### Events Not Recording
 
 ```bash
-# Check processes
-htop
+# On camera, check motion-detect logs
+journalctl -u motion-detect -f
 
-# Check Frigate resource usage
-docker stats frigate
+# Check SCP to hub works
+scp /tmp/test.txt dan@100.72.88.127:/tmp/
 
-# Reduce stream quality if needed (lower resolution/framerate)
+# Check hub clips directory permissions
+ls -la /mnt/ssd/parcelguard/clips/
+
+# Check MQTT event messages
+mosquitto_sub -h 100.72.88.127 -t "parcelguard/+/events" -v
 ```
 
 ---
@@ -798,17 +721,17 @@ docker stats frigate
 
 ### Network Security
 
-- All components on private WiFi network
+- All components communicate via Tailscale VPN (encrypted)
 - No direct port forwarding to internet
-- Cloudflare Tunnel provides encrypted HTTPS access
+- Tailscale Funnel provides HTTPS-only access
 - API authentication required for all endpoints
 
 ### Application Security
 
-- PIN/password required to access PWA
-- Session tokens with expiry
-- HTTPS only (enforced by Cloudflare)
-- No default credentials
+- PIN required to access PWA (4-8 digits)
+- Session tokens with 24-hour expiry
+- HTTPS only (enforced by Funnel)
+- Rate limiting on login (5 attempts/minute)
 
 ### Physical Security
 
@@ -823,41 +746,71 @@ docker stats frigate
 ### Hub Failure (SD Card Corruption)
 
 1. Flash new SD card with Raspberry Pi OS
-2. Run setup procedure (Phase 1)
-3. Clone repository
-4. Restore database from SSD backup: `cp /mnt/ssd/parcelguard/backups/latest.db /mnt/ssd/parcelguard/data/parcelguard.db`
-5. Video clips are preserved on SSD
+2. Run hub setup procedure (Phase 1)
+3. Mount existing SSD (data preserved!)
+4. Deploy application files
+5. Database and clips are preserved on SSD
 
 ### Camera Failure
 
 1. Flash new SD card
 2. Run camera setup procedure (Phase 2)
-3. Update hub configuration if IP changed
+3. Configure with same camera ID
+4. No data loss (recordings on hub)
 
 ### SSD Failure
 
 - Database and clips lost
 - Re-run hub setup with new SSD
-- Configure fresh database
+- Seed new database with cameras
 
-**Prevention:** Consider periodic backup of database to external location (cloud storage, USB drive).
+**Prevention:** Enable daily database backups to external location.
 
 ---
 
-## Appendix: Static IP Configuration
+## Quick Reference
 
-If DHCP reservation isn't available on your router, configure static IP on each device:
-
-**Edit `/etc/dhcpcd.conf`:**
+### Service Commands
 
 ```bash
-interface wlan0
-static ip_address=192.168.1.10/24  # Adjust per device
-static routers=192.168.1.1
-static domain_name_servers=192.168.1.1 8.8.8.8
+# Hub
+sudo systemctl status parcelguard-api nginx mediamtx mosquitto
+sudo systemctl restart parcelguard-api
+journalctl -u parcelguard-api -f
+
+# Camera
+sudo systemctl status motion-detect
+sudo systemctl restart motion-detect
+journalctl -u motion-detect -f
 ```
+
+### Useful Paths
+
+| Location | Path |
+|----------|------|
+| Database | `/mnt/ssd/parcelguard/data/parcelguard.db` |
+| Clips | `/mnt/ssd/parcelguard/clips/` |
+| Thumbnails | `/mnt/ssd/parcelguard/thumbnails/` |
+| API Code | `/home/dan/parcelguard-api/` |
+| Web Files | `/home/dan/parcelguard-web/` |
+| MediaMTX Config | `/home/dan/mediamtx.yml` |
+| Nginx Config | `/etc/nginx/sites-available/parcelguard` |
+
+### Access URLs
+
+| Access Type | URL |
+|-------------|-----|
+| Tailscale VPN | http://100.72.88.127 |
+| Public (Funnel) | https://parcelguard-hub.tail[xxxxx].ts.net |
+| API Health | http://100.72.88.127:3000/api/health |
+| HLS Streams | http://100.72.88.127:8888/cam1/ |
+
+### Default Credentials
+
+- **Username:** admin
+- **PIN:** 2808
 
 ---
 
-*Last Updated: [Date]*
-*Version: 1.0.0*
+*Last Updated: December 9, 2024*
+*Version: 0.10.0*
