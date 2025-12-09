@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2024-12-09
+
+### Added
+- PWA icons for app install and homescreen
+  - Blue shield with white parcel box icon design
+  - `pwa-192x192.png` and `pwa-512x512.png` for PWA manifest
+  - `apple-touch-icon.png` for iOS homescreen
+  - `favicon.svg` as source icon
+- Push notifications via ntfy.sh
+  - Configured `NTFY_TOPIC`, `APP_URL`, and `API_URL` environment variables
+  - Notifications sent on motion detection with deep links to events
+
+### Changed
+- Renamed "Memory" to "Hub Memory (RAM)" on System Health page for clarity
+- Camera "Last seen" timestamp now only displays when camera is offline
+
+### Fixed
+- Unit tests updated to match UI changes (Memory label, offline-only Last seen)
+
+### Scripts
+- Rewrote `scripts/pi-zero/setup-camera.sh` for on-device motion detection architecture
+  - Added multi-WiFi support (primary + secondary/4G hotspot)
+  - WiFi priorities: primary=10, secondary=5
+  - Installs Picamera2, OpenCV, paho-mqtt, ffmpeg
+  - Sets up SSH keys, RAM disk, systemd service, Tailscale
+- Added `scripts/pi-hub/add-camera.sh` for hub-side camera onboarding
+  - Creates clips directory
+  - Updates MediaMTX config
+  - Registers camera via API
+
 ## [0.10.0] - 2024-12-09
 
 ### Fixed
