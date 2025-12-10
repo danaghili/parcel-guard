@@ -703,9 +703,10 @@ journalctl -u motion-detect -f
 ├── parcelguard-api/            # API server code
 │   ├── dist/                   # Compiled TypeScript
 │   └── node_modules/
-├── parcelguard-web/            # Static web files
-│   ├── assets/
-│   └── index.html
+├── parcel-guard/               # Git repo (web files served by nginx)
+│   └── apps/web/dist/          # ** NGINX SERVES FROM HERE **
+│       ├── assets/
+│       └── index.html
 └── mediamtx.yml                # MediaMTX configuration
 ```
 

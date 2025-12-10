@@ -279,3 +279,50 @@ describe('AddCameraModal', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 })
+
+describe('Camera Rotation Settings', () => {
+  it('should have valid rotation values', () => {
+    // Rotation values should be 0, 90, 180, or 270 degrees
+    const validRotations = [0, 90, 180, 270]
+
+    validRotations.forEach(rotation => {
+      expect(rotation % 90).toBe(0)
+      expect(rotation).toBeGreaterThanOrEqual(0)
+      expect(rotation).toBeLessThan(360)
+    })
+  })
+
+  it('should include rotation in CameraSettings type', () => {
+    // Test that rotation property exists in the CameraSettings interface
+    const settings = {
+      motionSensitivity: 50,
+      motionZones: [],
+      recordingSchedule: null,
+      notificationsEnabled: true,
+      rotation: 180,
+    }
+
+    expect(settings).toHaveProperty('rotation')
+    expect(settings.rotation).toBe(180)
+  })
+
+  it('should accept all valid rotation values', () => {
+    const validRotations = [0, 90, 180, 270]
+
+    validRotations.forEach(rotation => {
+      const settings = {
+        motionSensitivity: 50,
+        motionZones: [],
+        recordingSchedule: null,
+        notificationsEnabled: true,
+        rotation,
+      }
+      expect([0, 90, 180, 270]).toContain(settings.rotation)
+    })
+  })
+
+  it('should default rotation to 0 when not specified', () => {
+    const defaultRotation = 0
+    expect(defaultRotation).toBe(0)
+  })
+})

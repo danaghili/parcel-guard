@@ -20,12 +20,15 @@ async function loginWithPin(page: Page): Promise<void> {
   await page.goto('/login')
   await page.evaluate(() => localStorage.clear())
 
-  // Enter valid PIN (default: 1234)
+  // Enter username (required since v0.9.0)
+  await page.fill('#username', 'admin')
+
+  // Enter valid PIN (default admin PIN: 2808)
   // PIN inputs use type="text" with inputMode="numeric"
   const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
 
   await pinInputs.first().click()
-  await page.keyboard.type('1234')
+  await page.keyboard.type('2808')
 
   // Wait for redirect to dashboard
   await expect(page).toHaveURL('/', { timeout: 5000 })
@@ -34,7 +37,7 @@ async function loginWithPin(page: Page): Promise<void> {
 // Helper to get auth token via API
 async function getAuthToken(request: APIRequestContext): Promise<string | undefined> {
   const loginResponse = await request.post(`${API_BASE_URL}/api/auth/login`, {
-    data: { pin: '1234' },
+    data: { username: 'admin', pin: '2808' },
   })
   const body = await loginResponse.json()
   return body.data?.token

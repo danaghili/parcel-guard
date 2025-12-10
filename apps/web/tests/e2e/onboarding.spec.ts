@@ -11,9 +11,13 @@ async function login(page: Page): Promise<void> {
     await dismissButton.click()
   }
 
+  // Enter username (required since v0.9.0)
+  await page.fill('#username', 'admin')
+
+  // Enter PIN (default admin PIN: 2808)
   const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
   await pinInputs.first().click()
-  await page.keyboard.type('1234')
+  await page.keyboard.type('2808')
   await expect(page).toHaveURL('/', { timeout: 10000 })
 }
 
@@ -44,9 +48,13 @@ async function loginSkipOnboarding(page: Page): Promise<void> {
     await dismissButton.click()
   }
 
+  // Enter username (required since v0.9.0)
+  await page.fill('#username', 'admin')
+
+  // Enter PIN (default admin PIN: 2808)
   const pinInputs = page.locator('input[type="text"][inputmode="numeric"]')
   await pinInputs.first().click()
-  await page.keyboard.type('1234')
+  await page.keyboard.type('2808')
   await expect(page).toHaveURL('/', { timeout: 10000 })
 }
 

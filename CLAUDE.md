@@ -1,10 +1,17 @@
 # CLAUDE.md - ParcelGuard Development Standards
 
+## IMPORTANT: Before Making Any Code Changes
+
+Before starting ANY WWORK, re-read this entire CLAUDE.md file
+to ensure your work aligns with project standards. This applies even for
+small changes or bug fixes.
+
 ## Project Overview
 
 **ParcelGuard** is a DIY multi-camera security system for monitoring communal areas in residential buildings, focused on detecting and recording parcel theft.
 
 ### Tech Stack
+
 - **Frontend:** React (PWA) + TypeScript + Tailwind CSS
 - **Backend:** Node.js + Express/Fastify + TypeScript
 - **Database:** SQLite
@@ -13,6 +20,7 @@
 - **Build Tool:** Vite
 
 ### Key Documentation
+
 - `ARCHITECTURE.md` - **Comprehensive technical architecture** (start here for system overview)
 - `HARDWARE_SPEC.md` - Hardware components and specifications
 - `SCOPE_OF_WORK.md` - Feature specifications and development phases
@@ -27,20 +35,20 @@
 
 ### 1.1 Naming Conventions
 
-| Context | Convention | Example |
-|---------|------------|---------|
-| Database tables | snake_case | `motion_events`, `camera_settings` |
-| Database columns | camelCase | `cameraId`, `createdAt`, `isImportant` |
-| TypeScript variables | camelCase | `eventList`, `isLoading`, `handleClick` |
-| TypeScript functions | camelCase | `fetchEvents()`, `formatTimestamp()` |
-| React components | PascalCase | `CameraGrid`, `EventTimeline`, `SettingsPanel` |
-| Types & Interfaces | PascalCase | `Camera`, `MotionEvent`, `AppSettings` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRY_ATTEMPTS`, `DEFAULT_RETENTION_DAYS` |
-| Files (components) | PascalCase | `CameraGrid.tsx`, `EventCard.tsx` |
-| Files (utilities) | camelCase | `formatDate.ts`, `apiClient.ts` |
-| Files (hooks) | camelCase, `use` prefix | `useCamera.ts`, `useEvents.ts` |
-| CSS/Tailwind classes | kebab-case | `camera-grid`, `event-card` |
-| Environment variables | SCREAMING_SNAKE_CASE | `VITE_API_URL`, `DATABASE_PATH` |
+| Context               | Convention              | Example                                        |
+| --------------------- | ----------------------- | ---------------------------------------------- |
+| Database tables       | snake_case              | `motion_events`, `camera_settings`             |
+| Database columns      | camelCase               | `cameraId`, `createdAt`, `isImportant`         |
+| TypeScript variables  | camelCase               | `eventList`, `isLoading`, `handleClick`        |
+| TypeScript functions  | camelCase               | `fetchEvents()`, `formatTimestamp()`           |
+| React components      | PascalCase              | `CameraGrid`, `EventTimeline`, `SettingsPanel` |
+| Types & Interfaces    | PascalCase              | `Camera`, `MotionEvent`, `AppSettings`         |
+| Constants             | SCREAMING_SNAKE_CASE    | `MAX_RETRY_ATTEMPTS`, `DEFAULT_RETENTION_DAYS` |
+| Files (components)    | PascalCase              | `CameraGrid.tsx`, `EventCard.tsx`              |
+| Files (utilities)     | camelCase               | `formatDate.ts`, `apiClient.ts`                |
+| Files (hooks)         | camelCase, `use` prefix | `useCamera.ts`, `useEvents.ts`                 |
+| CSS/Tailwind classes  | kebab-case              | `camera-grid`, `event-card`                    |
+| Environment variables | SCREAMING_SNAKE_CASE    | `VITE_API_URL`, `DATABASE_PATH`                |
 
 ### 1.2 Formatting
 
@@ -101,6 +109,7 @@ export function CameraCard({ camera, onSelect }: CameraCardProps) {
 ### 1.5 Error Handling
 
 #### Frontend (React)
+
 - Error boundaries for component-level failures
 - Try/catch in async operations
 - User-friendly error messages (no raw error dumps)
@@ -118,6 +127,7 @@ try {
 ```
 
 #### Backend (API)
+
 - Consistent error response format
 - Appropriate HTTP status codes
 - Log errors with context
@@ -134,7 +144,7 @@ interface ApiError {
 res.status(404).json({
   error: 'NOT_FOUND',
   message: 'Camera not found',
-  details: { cameraId }
+  details: { cameraId },
 })
 ```
 
@@ -257,12 +267,12 @@ Before writing any code, thoroughly analyse and plan:
 
 Create a new branch with a descriptive name:
 
-| Type | Prefix | Example |
-|------|--------|---------|
-| New feature | `feature/` | `feature/live-view-grid` |
-| Bug fix | `fix/` | `fix/camera-reconnect-loop` |
-| Refactoring | `refactor/` | `refactor/event-storage` |
-| Maintenance | `chore/` | `chore/update-dependencies` |
+| Type        | Prefix      | Example                     |
+| ----------- | ----------- | --------------------------- |
+| New feature | `feature/`  | `feature/live-view-grid`    |
+| Bug fix     | `fix/`      | `fix/camera-reconnect-loop` |
+| Refactoring | `refactor/` | `refactor/event-storage`    |
+| Maintenance | `chore/`    | `chore/update-dependencies` |
 
 ```bash
 git checkout -b feature/descriptive-name
@@ -321,6 +331,7 @@ Only after all regression tests pass:
 5. Run full test suite to ensure integration
 
 #### Test File Naming
+
 - Unit tests: `ComponentName.test.ts` or `functionName.test.ts`
 - E2E tests: `feature-name.spec.ts`
 
@@ -342,6 +353,7 @@ Only after all regression tests pass:
 ### 3.8 Commit Phase
 
 **Only commit after:**
+
 - [ ] Feature works correctly in QA
 - [ ] 100% regression test pass rate
 - [ ] Any skipped tests have documented justification
@@ -362,6 +374,7 @@ Longer description if needed. Explain what changed and why.
 **Types:** `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`
 
 **Examples:**
+
 ```
 feat: Add multi-camera grid view
 
@@ -409,11 +422,11 @@ git push origin main
 
 ### 4.1 Environment Structure
 
-| Environment | Purpose | Config File |
-|-------------|---------|-------------|
-| Development | Local development | `.env.development` |
-| QA | Testing before production | `.env.qa` |
-| Production | Live system | `.env.production` |
+| Environment | Purpose                   | Config File        |
+| ----------- | ------------------------- | ------------------ |
+| Development | Local development         | `.env.development` |
+| QA          | Testing before production | `.env.qa`          |
+| Production  | Live system               | `.env.production`  |
 
 ### 4.2 Environment Variables
 
@@ -463,6 +476,7 @@ apps/api/src/db/migrations/
 ```
 
 **Migration file format:**
+
 ```sql
 -- Migration: 002_add_motion_zones
 -- Created: 2024-01-15
@@ -485,7 +499,7 @@ CREATE TABLE motion_events (
   isImportant INTEGER DEFAULT 0,
   createdAt INTEGER DEFAULT (unixepoch()),
   updatedAt INTEGER DEFAULT (unixepoch()),
-  
+
   FOREIGN KEY (cameraId) REFERENCES cameras(id)
 );
 
@@ -516,9 +530,9 @@ describe('ComponentName', () => {
   it('should handle user interaction', async () => {
     const onAction = vi.fn()
     render(<ComponentName onAction={onAction} />)
-    
+
     await userEvent.click(screen.getByRole('button'))
-    
+
     expect(onAction).toHaveBeenCalledOnce()
   })
 })
@@ -618,17 +632,20 @@ npm run deploy:prod      # Deploy to production (ask first!)
 ## Feature: [Name]
 
 ### Planning
+
 - [ ] Reviewed existing codebase
 - [ ] Created implementation plan
 - [ ] Plan approved
 
 ### Implementation
+
 - [ ] Branch created: `feature/...`
 - [ ] Code follows standards
 - [ ] No TypeScript errors
 - [ ] No ESLint warnings
 
 ### Testing
+
 - [ ] Manual testing complete
 - [ ] Regression tests pass (100%)
 - [ ] New unit tests created
@@ -636,12 +653,14 @@ npm run deploy:prod      # Deploy to production (ask first!)
 - [ ] All tests pass
 
 ### Documentation
+
 - [ ] ARCHITECTURE.md updated (if schema/API/pages changed)
 - [ ] README updated (if needed)
 - [ ] CHANGELOG updated
 - [ ] Code comments added
 
 ### Deployment
+
 - [ ] Merged to main
 - [ ] QA verified
 - [ ] Production deployment approved
@@ -650,5 +669,5 @@ npm run deploy:prod      # Deploy to production (ask first!)
 
 ---
 
-*Last updated: [Date]*
-*Version: 1.0.0*
+_Last updated: [Date]_
+_Version: 1.0.0_

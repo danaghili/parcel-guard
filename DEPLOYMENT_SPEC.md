@@ -140,19 +140,21 @@ Remote access is provided via **Tailscale Funnel** (free tier):
 
 ```
 /home/dan/
+├── parcel-guard/              # Git repository (for web deployment)
+│   └── apps/web/dist/         # ** NGINX SERVES FROM HERE **
+│       ├── assets/
+│       ├── index.html
+│       └── sw.js
 ├── parcelguard-api/           # Backend API (deployed)
 │   ├── dist/                  # Compiled TypeScript
 │   ├── node_modules/
+│   │   └── @parcelguard/shared/dist/  # Shared types (must be updated on deploy!)
 │   └── package.json
-├── parcelguard-web/           # Built PWA files (deployed)
-│   ├── assets/
-│   ├── index.html
-│   └── sw.js
 └── mediamtx.yml               # MediaMTX configuration
 
 /mnt/ssd/parcelguard/          # 240GB SSD (all data)
 ├── data/
-│   └── parcelguard.db         # SQLite database
+│   └── parcelguard.db         # ** PRODUCTION DATABASE **
 ├── clips/                     # Motion event recordings
 │   ├── cam1/
 │   │   └── 20241207_143022.mp4
@@ -162,6 +164,8 @@ Remote access is provided via **Tailscale Funnel** (free tier):
     ├── cam1_20241207_143022.jpg
     └── cam2_20241207_152145.jpg
 ```
+
+> **IMPORTANT:** The production database is on the SSD at `/mnt/ssd/parcelguard/data/parcelguard.db`, NOT in the API directory. Migrations must be applied manually to production.
 
 ### Pi Zero Cameras
 
@@ -287,14 +291,14 @@ mkdir -p /mnt/ssd/parcelguard/clips/{cam1,cam2}
 
 # Create directories
 mkdir -p /home/dan/parcelguard-api
-mkdir -p /home/dan/parcelguard-web
+mkdir -p /home/dan/parcel-guard/apps/web/dist
 
 # Copy API files (from local machine)
 scp -r apps/api/dist/* dan@100.72.88.127:/home/dan/parcelguard-api/
 scp apps/api/package*.json dan@100.72.88.127:/home/dan/parcelguard-api/
 
-# Copy Web files
-scp -r apps/web/dist/* dan@100.72.88.127:/home/dan/parcelguard-web/
+# Copy Web files (nginx serves from parcel-guard repo)
+scp -r apps/web/dist/* dan@100.72.88.127:/home/dan/parcel-guard/apps/web/dist/
 
 # On hub, install production dependencies
 cd /home/dan/parcelguard-api
@@ -337,8 +341,8 @@ server {
     listen 80;
     server_name _;
 
-    # Serve PWA static files
-    root /home/dan/parcelguard-web;
+    # Serve PWA static files (from parcel-guard repo)
+    root /home/dan/parcel-guard/apps/web/dist;
     index index.html;
 
     # PWA routing - serve index.html for all routes
@@ -548,31 +552,66 @@ sudo systemctl start motion-detect
 
 ## Update Procedures
 
-### API Update
+### Full Production Deploy
 
 ```bash
-# On local machine, build and deploy
-cd apps/api
+# From local machine (parcel-guard directory)
+
+# 1. Build everything
 npm run build
 
-# Copy to hub
-scp -r dist/* dan@100.72.88.127:/home/dan/parcelguard-api/
+# 2. Deploy web frontend (nginx serves from parcel-guard repo)
+scp -r apps/web/dist/* dan@192.168.1.205:/home/dan/parcel-guard/apps/web/dist/
 
-# On hub, restart service
-ssh dan@100.72.88.127 "sudo systemctl restart parcelguard-api"
+# 3. Deploy API
+scp -r apps/api/dist/* dan@192.168.1.205:/home/dan/parcelguard-api/dist/
+
+# 4. Deploy shared types (IMPORTANT - often forgotten!)
+scp -r packages/shared/dist/* dan@192.168.1.205:/home/dan/parcelguard-api/node_modules/@parcelguard/shared/dist/
+
+# 5. Apply any new migrations to production database
+ssh dan@192.168.1.205 "sqlite3 /mnt/ssd/parcelguard/data/parcelguard.db 'YOUR MIGRATION SQL HERE'"
+
+# 6. Restart API
+ssh dan@192.168.1.205 "sudo systemctl restart parcelguard-api"
 ```
 
-### Web Update
+### API Update Only
 
 ```bash
-# On local machine, build
-cd apps/web
-npm run build
+# Build and deploy API
+npm run build -w @parcelguard/shared -w @parcelguard/api
 
-# Copy to hub
-scp -r dist/* dan@100.72.88.127:/home/dan/parcelguard-web/
+# Copy API dist
+scp -r apps/api/dist/* dan@192.168.1.205:/home/dan/parcelguard-api/dist/
+
+# Copy shared types if changed
+scp -r packages/shared/dist/* dan@192.168.1.205:/home/dan/parcelguard-api/node_modules/@parcelguard/shared/dist/
+
+# Restart
+ssh dan@192.168.1.205 "sudo systemctl restart parcelguard-api"
+```
+
+### Web Update Only
+
+```bash
+# Build web
+npm run build -w @parcelguard/web
+
+# Copy to correct location (nginx serves from parcel-guard repo!)
+scp -r apps/web/dist/* dan@192.168.1.205:/home/dan/parcel-guard/apps/web/dist/
 
 # No restart needed (static files)
+```
+
+### Database Migration
+
+```bash
+# Check current schema
+ssh dan@192.168.1.205 "sqlite3 /mnt/ssd/parcelguard/data/parcelguard.db '.schema tablename'"
+
+# Apply migration manually
+ssh dan@192.168.1.205 "sqlite3 /mnt/ssd/parcelguard/data/parcelguard.db 'ALTER TABLE cameras ADD COLUMN rotation INTEGER DEFAULT 0'"
 ```
 
 ### Camera Update
@@ -788,13 +827,15 @@ journalctl -u motion-detect -f
 
 | Location | Path |
 |----------|------|
-| Database | `/mnt/ssd/parcelguard/data/parcelguard.db` |
+| **Production Database** | `/mnt/ssd/parcelguard/data/parcelguard.db` |
 | Clips | `/mnt/ssd/parcelguard/clips/` |
 | Thumbnails | `/mnt/ssd/parcelguard/thumbnails/` |
-| API Code | `/home/dan/parcelguard-api/` |
-| Web Files | `/home/dan/parcelguard-web/` |
+| API Code | `/home/dan/parcelguard-api/dist/` |
+| API Shared Types | `/home/dan/parcelguard-api/node_modules/@parcelguard/shared/dist/` |
+| **Web Files (nginx)** | `/home/dan/parcel-guard/apps/web/dist/` |
 | MediaMTX Config | `/home/dan/mediamtx.yml` |
-| Nginx Config | `/etc/nginx/sites-available/parcelguard` |
+| Nginx Config | `/etc/nginx/sites-enabled/parcelguard` |
+| API Service | `/etc/systemd/system/parcelguard-api.service` |
 
 ### Access URLs
 
