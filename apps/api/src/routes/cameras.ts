@@ -216,7 +216,7 @@ export const camerasRoutes: FastifyPluginAsync = async (
     { preHandler: requireAuth },
     async (request, reply) => {
       const { id } = request.params
-      const { name, streamUrl, motionSensitivity, motionZones, notificationsEnabled } = request.body
+      const { name, streamUrl, motionSensitivity, motionZones, notificationsEnabled, rotation } = request.body
 
       try {
         const camera = updateCamera(id, {
@@ -225,6 +225,7 @@ export const camerasRoutes: FastifyPluginAsync = async (
           motionSensitivity,
           motionZones,
           notificationsEnabled,
+          rotation,
         })
 
         return reply.send({
@@ -264,6 +265,7 @@ export const camerasRoutes: FastifyPluginAsync = async (
   )
 
   // Start live view - sends MQTT command to camera
+  // Also pauses uploads on ALL cameras to free bandwidth for streaming
   server.post<{ Params: CameraParams }>(
     '/cameras/:id/live/start',
     { preHandler: requireAuth },
@@ -287,6 +289,18 @@ export const camerasRoutes: FastifyPluginAsync = async (
         })
       }
 
+      // Pause uploads on OTHER cameras to free bandwidth for live streaming.
+      // The camera being viewed doesn't need pausing - it switches to live mode
+      // which inherently stops event uploads while streaming.
+      const allCameras = getAllCameras()
+      const otherCameraIds = allCameras
+        .filter(c => c.id !== id)
+        .map(c => c.id)
+
+      if (otherCameraIds.length > 0) {
+        mqttService.pauseAllUploads(otherCameraIds)
+      }
+
       const sent = mqttService.startLiveView(id)
 
       if (!sent) {
@@ -304,6 +318,7 @@ export const camerasRoutes: FastifyPluginAsync = async (
   )
 
   // Stop live view - sends MQTT command to camera
+  // Also resumes uploads on ALL cameras
   server.post<{ Params: CameraParams }>(
     '/cameras/:id/live/stop',
     { preHandler: requireAuth },
@@ -328,6 +343,16 @@ export const camerasRoutes: FastifyPluginAsync = async (
       }
 
       const sent = mqttService.stopLiveView(id)
+
+      // Resume uploads on ALL cameras (they'll process their queues)
+      const allCameras = getAllCameras()
+      const otherCameraIds = allCameras
+        .filter(c => c.id !== id)
+        .map(c => c.id)
+
+      if (otherCameraIds.length > 0) {
+        mqttService.resumeAllUploads(otherCameraIds)
+      }
 
       if (!sent) {
         return reply.status(500).send({

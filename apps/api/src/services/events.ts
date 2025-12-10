@@ -210,12 +210,19 @@ export function getEvents(
     const endMinutes = endHour * 60 + endMin
 
     // Use SQLite time functions to extract hour and minute from timestamp
-    // timestamp is Unix epoch (seconds), so we convert to time of day
-    conditions.push(`
-      ((strftime('%H', timestamp, 'unixepoch') * 60 + strftime('%M', timestamp, 'unixepoch'))
-       BETWEEN ? AND ?)
-    `)
-    values.push(startMinutes, endMinutes)
+    // timestamp is Unix epoch (seconds), convert to local time for comparison
+    // Use 'localtime' modifier so time filtering matches user's local timezone
+    const timeExpr = `(strftime('%H', timestamp, 'unixepoch', 'localtime') * 60 + strftime('%M', timestamp, 'unixepoch', 'localtime'))`
+
+    if (startMinutes > endMinutes) {
+      // Overnight range (e.g., 22:00-06:00): use OR to match times >= start OR <= end
+      conditions.push(`(${timeExpr} >= ? OR ${timeExpr} <= ?)`)
+      values.push(startMinutes, endMinutes)
+    } else {
+      // Normal range (e.g., 09:00-17:00): use BETWEEN
+      conditions.push(`(${timeExpr} BETWEEN ? AND ?)`)
+      values.push(startMinutes, endMinutes)
+    }
   }
 
   // Importance filter

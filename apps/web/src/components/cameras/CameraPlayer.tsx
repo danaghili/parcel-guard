@@ -7,6 +7,7 @@ interface CameraPlayerProps {
   onStatusChange?: (status: StreamStatus) => void
   className?: string
   showControls?: boolean
+  rotation?: number
 }
 
 export function CameraPlayer({
@@ -14,6 +15,7 @@ export function CameraPlayer({
   onStatusChange,
   className = '',
   showControls = false,
+  rotation = 0,
 }: CameraPlayerProps): JSX.Element {
   const { videoRef, status, error, retry } = useHlsStream(streamUrl, {
     autoPlay: true,
@@ -24,11 +26,24 @@ export function CameraPlayer({
     onStatusChange?.(status)
   }, [status, onStatusChange])
 
+  // Calculate video style with rotation
+  // For 90° and 270° rotations, aspect ratio changes from 16:9 to 9:16
+  // Scale down to fit within the container bounds
+  const isPortraitRotation = rotation === 90 || rotation === 270
+  const videoStyle = rotation
+    ? {
+        transform: isPortraitRotation
+          ? `rotate(${rotation}deg) scale(0.5625)` // 9/16 = 0.5625 to fit portrait in landscape container
+          : `rotate(${rotation}deg)`,
+      }
+    : undefined
+
   return (
-    <div className={`relative bg-black ${className}`}>
+    <div className={`relative bg-black overflow-hidden ${className}`}>
       <video
         ref={videoRef}
         className="w-full h-full object-cover"
+        style={videoStyle}
         playsInline
         controls={showControls}
       />

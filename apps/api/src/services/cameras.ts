@@ -11,6 +11,7 @@ interface CameraRow {
   motionSensitivity: number
   motionZones: string
   notificationsEnabled: number
+  rotation: number
   createdAt: number
   updatedAt: number
 }
@@ -27,6 +28,7 @@ function rowToCamera(row: CameraRow): Camera {
       motionZones: JSON.parse(row.motionZones || '[]'),
       recordingSchedule: null,
       notificationsEnabled: row.notificationsEnabled === 1,
+      rotation: row.rotation ?? 0,
     },
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -163,6 +165,7 @@ export interface UpdateCameraInput {
   motionSensitivity?: number
   motionZones?: unknown[]
   notificationsEnabled?: boolean
+  rotation?: number
 }
 
 export function updateCamera(id: string, input: UpdateCameraInput): Camera {
@@ -198,6 +201,13 @@ export function updateCamera(id: string, input: UpdateCameraInput): Camera {
   if (input.notificationsEnabled !== undefined) {
     updates.push('notificationsEnabled = ?')
     values.push(input.notificationsEnabled ? 1 : 0)
+  }
+  if (input.rotation !== undefined) {
+    // Validate rotation value (0, 90, 180, 270)
+    const validRotations = [0, 90, 180, 270]
+    const rotation = validRotations.includes(input.rotation) ? input.rotation : 0
+    updates.push('rotation = ?')
+    values.push(rotation)
   }
 
   if (updates.length > 0) {

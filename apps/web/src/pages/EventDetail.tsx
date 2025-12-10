@@ -183,6 +183,7 @@ export function EventDetail(): JSX.Element {
           posterUrl={event.thumbnailPath ? eventsApi.getThumbnailUrl(event.id) : undefined}
           onDownload={handleDownload}
           className="mb-6"
+          rotation={camera?.settings?.rotation ?? 0}
         />
       ) : (
         <div className="aspect-video bg-slate-800 rounded-lg flex items-center justify-center mb-6">

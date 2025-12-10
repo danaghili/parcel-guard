@@ -26,6 +26,7 @@ export function CameraCard({ camera }: CameraCardProps): JSX.Element {
         streamUrl={camera.status === 'online' ? camera.streamUrl : null}
         onStatusChange={setStreamStatus}
         className="w-full h-full"
+        rotation={camera.settings?.rotation ?? 0}
       />
       <CameraOverlay
         name={camera.name}

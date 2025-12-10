@@ -530,6 +530,7 @@ export interface Camera {
     motionZones: unknown[]
     recordingSchedule: unknown | null
     notificationsEnabled: boolean
+    rotation: number
   }
   createdAt?: number
   updatedAt?: number
@@ -620,6 +621,7 @@ export interface UpdateCameraInput {
   streamUrl?: string
   motionSensitivity?: number
   notificationsEnabled?: boolean
+  rotation?: number
 }
 
 export interface StreamTestResult {

@@ -14,6 +14,13 @@ import {
 } from '../lib/api'
 
 /**
+ * Validate time string format (HH:mm, 24-hour)
+ */
+function isValidTimeFormat(time: string): boolean {
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time)
+}
+
+/**
  * Parse URL search params into EventFilters object
  */
 function parseFiltersFromUrl(params: URLSearchParams): EventFiltersType {
@@ -27,6 +34,14 @@ function parseFiltersFromUrl(params: URLSearchParams): EventFiltersType {
 
   const endDate = params.get('endDate')
   if (endDate) filters.endDate = parseInt(endDate, 10)
+
+  // Time of day filters (both must be present and valid)
+  const startTime = params.get('startTime')
+  const endTime = params.get('endTime')
+  if (startTime && endTime && isValidTimeFormat(startTime) && isValidTimeFormat(endTime)) {
+    filters.startTime = startTime
+    filters.endTime = endTime
+  }
 
   const isImportant = params.get('important')
   if (isImportant === 'true') filters.isImportant = true
@@ -48,6 +63,11 @@ function filtersToSearchParams(filters: EventFiltersType): URLSearchParams {
   if (filters.cameraId) params.set('camera', filters.cameraId)
   if (filters.startDate) params.set('startDate', filters.startDate.toString())
   if (filters.endDate) params.set('endDate', filters.endDate.toString())
+  // Both startTime and endTime must be present together
+  if (filters.startTime && filters.endTime) {
+    params.set('startTime', filters.startTime)
+    params.set('endTime', filters.endTime)
+  }
   if (filters.isImportant !== undefined) params.set('important', filters.isImportant.toString())
   if (filters.isFalseAlarm !== undefined) params.set('falseAlarm', filters.isFalseAlarm.toString())
 

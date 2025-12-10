@@ -25,6 +25,7 @@ export interface CameraSettings {
   motionZones: MotionZone[]
   recordingSchedule: RecordingSchedule | null
   notificationsEnabled: boolean
+  rotation: number // 0, 90, 180, or 270 degrees
 }
 
 export interface Camera {

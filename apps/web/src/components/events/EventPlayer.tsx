@@ -5,6 +5,7 @@ interface EventPlayerProps {
   posterUrl?: string
   onDownload?: () => void
   className?: string
+  rotation?: number
 }
 
 /**
@@ -22,6 +23,7 @@ export function EventPlayer({
   posterUrl,
   onDownload,
   className = '',
+  rotation = 0,
 }: EventPlayerProps): JSX.Element {
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -138,6 +140,9 @@ export function EventPlayer({
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
 
+  // Calculate video style with rotation
+  const videoStyle = rotation ? { transform: `rotate(${rotation}deg)` } : undefined
+
   if (error) {
     return (
       <div className={`bg-slate-900 rounded-lg aspect-video flex items-center justify-center ${className}`}>
@@ -173,6 +178,7 @@ export function EventPlayer({
         src={videoUrl}
         poster={posterUrl}
         className="w-full aspect-video object-contain"
+        style={videoStyle}
         playsInline
         onClick={togglePlay}
       />

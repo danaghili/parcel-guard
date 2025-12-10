@@ -10,6 +10,27 @@ interface EventFiltersProps {
 
 type DatePreset = 'all' | 'today' | 'week' | 'month' | 'custom'
 
+interface TimePreset {
+  id: string
+  label: string
+  startTime: string
+  endTime: string
+  isOvernight?: boolean
+}
+
+const TIME_PRESETS: TimePreset[] = [
+  { id: 'business', label: 'Business Hours', startTime: '09:00', endTime: '17:00' },
+  { id: 'evening', label: 'Evening', startTime: '17:00', endTime: '22:00' },
+  { id: 'night', label: 'Night', startTime: '22:00', endTime: '06:00', isOvernight: true },
+]
+
+/**
+ * Check if a time range is overnight (startTime > endTime)
+ */
+function isOvernightRange(startTime: string, endTime: string): boolean {
+  return startTime > endTime
+}
+
 /**
  * Get the start of today in Unix timestamp (seconds)
  */
@@ -59,6 +80,9 @@ export function EventFilters({
   className = '',
 }: EventFiltersProps): JSX.Element {
   const [showCustomDates, setShowCustomDates] = useState(false)
+  const [showTimeFilter, setShowTimeFilter] = useState(
+    Boolean(filters.startTime && filters.endTime),
+  )
 
   // Determine current date preset based on filters
   const getDatePreset = (): DatePreset => {
@@ -142,8 +166,48 @@ export function EventFilters({
     })
   }
 
+  const handleTimeFilterToggle = (enabled: boolean) => {
+    setShowTimeFilter(enabled)
+    if (!enabled) {
+      // Clear time filters when disabling
+      onFiltersChange({
+        ...filters,
+        startTime: undefined,
+        endTime: undefined,
+      })
+    }
+  }
+
+  const handleTimePresetChange = (preset: TimePreset) => {
+    onFiltersChange({
+      ...filters,
+      startTime: preset.startTime,
+      endTime: preset.endTime,
+    })
+  }
+
+  const handleTimeChange = (field: 'startTime' | 'endTime', value: string) => {
+    const newFilters = { ...filters, [field]: value }
+    // Only apply if both times are set
+    if (newFilters.startTime && newFilters.endTime) {
+      onFiltersChange(newFilters)
+    } else {
+      // Update local state but don't trigger filter change until both are set
+      onFiltersChange(newFilters)
+    }
+  }
+
+  const getActiveTimePreset = (): string | null => {
+    if (!filters.startTime || !filters.endTime) return null
+    const match = TIME_PRESETS.find(
+      (p) => p.startTime === filters.startTime && p.endTime === filters.endTime,
+    )
+    return match?.id ?? null
+  }
+
   const clearFilters = () => {
     setShowCustomDates(false)
+    setShowTimeFilter(false)
     onFiltersChange({})
   }
 
@@ -151,8 +215,13 @@ export function EventFilters({
     filters.cameraId ||
     filters.startDate ||
     filters.endDate ||
+    (filters.startTime && filters.endTime) ||
     filters.isImportant !== undefined ||
     filters.isFalseAlarm !== undefined
+
+  const activeTimePreset = getActiveTimePreset()
+  const hasOvernightRange =
+    filters.startTime && filters.endTime && isOvernightRange(filters.startTime, filters.endTime)
 
   const currentPreset = getDatePreset()
 
@@ -291,6 +360,76 @@ export function EventFilters({
           </label>
         </div>
       )}
+
+      {/* Time of day filter */}
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showTimeFilter}
+            onChange={(e) => handleTimeFilterToggle(e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="text-gray-700 dark:text-slate-300">Filter by time of day</span>
+          {hasOvernightRange && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">(overnight)</span>
+          )}
+        </label>
+
+        {showTimeFilter && (
+          <div className="pl-6 space-y-3">
+            {/* Quick presets */}
+            <div className="flex flex-wrap gap-2">
+              {TIME_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handleTimePresetChange(preset)}
+                  className={`
+                    px-3 py-1.5 text-xs font-medium rounded-full transition-colors
+                    ${
+                      activeTimePreset === preset.id
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
+                    }
+                  `}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Time inputs */}
+            <div className="flex flex-wrap gap-3 items-center">
+              <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+                From:
+                <input
+                  type="time"
+                  value={filters.startTime ?? ''}
+                  onChange={(e) => handleTimeChange('startTime', e.target.value)}
+                  className="
+                    bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-1.5
+                    text-sm text-gray-900 dark:text-slate-100
+                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                  "
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+                To:
+                <input
+                  type="time"
+                  value={filters.endTime ?? ''}
+                  onChange={(e) => handleTimeChange('endTime', e.target.value)}
+                  className="
+                    bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 rounded-lg px-3 py-1.5
+                    text-sm text-gray-900 dark:text-slate-100
+                    focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                  "
+                />
+              </label>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

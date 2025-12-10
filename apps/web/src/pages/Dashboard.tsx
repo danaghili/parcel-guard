@@ -8,6 +8,9 @@ interface Camera {
   id: string
   name: string
   status: 'online' | 'offline'
+  settings?: {
+    rotation?: number
+  }
 }
 
 interface DashboardData {
@@ -193,6 +196,16 @@ export function Dashboard(): JSX.Element {
           <div className="space-y-2">
             {recentEvents.map((event) => {
               const eventCamera = cameras.find((c) => c.id === event.cameraId)
+              const rotation = eventCamera?.settings?.rotation ?? 0
+              // For 90° and 270° rotations, scale down to fit within container bounds
+              const isPortraitRotation = rotation === 90 || rotation === 270
+              const thumbnailStyle = rotation
+                ? {
+                    transform: isPortraitRotation
+                      ? `rotate(${rotation}deg) scale(0.5625)` // 9/16 = 0.5625
+                      : `rotate(${rotation}deg)`,
+                  }
+                : undefined
               return (
                 <Link
                   key={event.id}
@@ -206,6 +219,7 @@ export function Dashboard(): JSX.Element {
                         src={eventsApi.getThumbnailUrl(event.id)}
                         alt=""
                         className="w-full h-full object-cover"
+                        style={thumbnailStyle}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">

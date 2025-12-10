@@ -196,6 +196,7 @@ export function Camera(): JSX.Element {
           onStatusChange={setStreamStatus}
           className="w-full h-full max-h-screen"
           showControls={true}
+          rotation={camera.settings?.rotation ?? 0}
         />
       </div>
 

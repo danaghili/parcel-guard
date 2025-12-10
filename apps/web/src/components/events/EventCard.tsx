@@ -48,6 +48,16 @@ function formatDuration(seconds: number | null): string {
 
 export function EventCard({ event, camera, className = '' }: EventCardProps): JSX.Element {
   const thumbnailUrl = event.thumbnailPath ? eventsApi.getThumbnailUrl(event.id) : null
+  const rotation = camera?.settings?.rotation ?? 0
+  // For 90° and 270° rotations, scale down to fit within container bounds
+  const isPortraitRotation = rotation === 90 || rotation === 270
+  const thumbnailStyle = rotation
+    ? {
+        transform: isPortraitRotation
+          ? `rotate(${rotation}deg) scale(0.5625)` // 9/16 = 0.5625
+          : `rotate(${rotation}deg)`,
+      }
+    : undefined
 
   return (
     <Link
@@ -67,6 +77,7 @@ export function EventCard({ event, camera, className = '' }: EventCardProps): JS
             alt={`Event from ${camera?.name ?? event.cameraId}`}
             loading="lazy"
             className="w-full h-full object-cover"
+            style={thumbnailStyle}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

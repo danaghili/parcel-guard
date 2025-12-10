@@ -13,6 +13,8 @@ const TOPICS = {
 export type CameraCommand =
   | { type: 'start_live_view' }
   | { type: 'stop_live_view' }
+  | { type: 'pause_uploads' }
+  | { type: 'resume_uploads' }
 
 // Status message from camera
 interface CameraStatus {
@@ -22,6 +24,9 @@ interface CameraStatus {
   uptime?: number
   ip?: string
   timestamp: number
+  uploads_paused?: boolean
+  upload_queue_size?: number
+  stream_ready?: boolean
 }
 
 // Event message from camera
@@ -145,7 +150,7 @@ class MQTTService {
     }
   }
 
-  private handleStatus(status: CameraStatus & { stream_ready?: boolean }): void {
+  private handleStatus(status: CameraStatus): void {
     this.log.debug({ status }, 'Received camera status')
 
     // Track stream ready status if provided
@@ -217,6 +222,40 @@ class MQTTService {
    */
   stopLiveView(deviceId: string): boolean {
     return this.sendCommand(deviceId, { type: 'stop_live_view' })
+  }
+
+  /**
+   * Pause uploads on a camera (frees bandwidth for live streaming)
+   */
+  pauseUploads(deviceId: string): boolean {
+    return this.sendCommand(deviceId, { type: 'pause_uploads' })
+  }
+
+  /**
+   * Resume uploads on a camera
+   */
+  resumeUploads(deviceId: string): boolean {
+    return this.sendCommand(deviceId, { type: 'resume_uploads' })
+  }
+
+  /**
+   * Pause uploads on all cameras (for bandwidth priority during live view)
+   */
+  pauseAllUploads(cameraIds: string[]): void {
+    this.log.info({ cameraIds }, 'Pausing uploads on all cameras')
+    for (const id of cameraIds) {
+      this.pauseUploads(id)
+    }
+  }
+
+  /**
+   * Resume uploads on all cameras
+   */
+  resumeAllUploads(cameraIds: string[]): void {
+    this.log.info({ cameraIds }, 'Resuming uploads on all cameras')
+    for (const id of cameraIds) {
+      this.resumeUploads(id)
+    }
   }
 
   /**
